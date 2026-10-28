@@ -25,3 +25,13 @@ needs the pinned Node toolchain.
 
 Use a **full commit SHA from workspace/main**, not a branch or tag, so
 that consumers review updates before taking them.
+
+## Integration with the workspace CI
+
+This action is independent of Rust compilation. While the shared Node action is
+reviewed, the Workspace PR is tested **against the mise-bootstrap changes in
+Workspace #4**: they install the pinned Platforms npm dependencies required by
+the existing Rust graphics integration job. Without those changes, the
+workspace's `main` integration job fails before reaching tests relevant to
+this action. Merge #4 first; then retarget this PR to `main`, wait for green
+checks, and use the resulting immutable `main` SHA in consumers such as Website.
