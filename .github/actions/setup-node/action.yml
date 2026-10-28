@@ -20,9 +20,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install mise and caller-pinned Node.js
+    - name: "Setup | Mise-pinned Node.js"
       uses: jdx/mise-action@v5.2.2
-    - name: Restore locked npm download cache
+    - name: "Setup | Restore npm download cache"
       if: ${{ inputs.cache-enabled == 'true' }}
       uses: actions/cache@v4
       with:
@@ -30,7 +30,7 @@ runs:
         key: npm-${{ runner.os }}-${{ hashFiles(inputs.cache-dependency-path) }}
         restore-keys: |
           npm-${{ runner.os }}-
-    - name: Install locked Node.js dependencies
+    - name: "Setup | Locked Node dependencies"
       if: ${{ inputs.install-dependencies == 'true' }}
       shell: bash
       env:

@@ -15,12 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - name: "Setup | Checkout sources"
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - run: python3 scripts/validate_workspace.py
-      - uses: jdx/mise-action@v5.2.2
-      - run: mise run ci:lint-workflows
+      - name: "Validate | Workspace repository graph"
+        run: python3 scripts/validate_workspace.py
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.2
+      - name: "Lint | GitHub Actions"
+        run: mise run ci:lint-workflows
 
   integration:
     runs-on: ubuntu-latest
@@ -30,20 +34,24 @@ jobs:
       CARGO_TERM_COLOR: always
       CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
-      - uses: actions/checkout@v7
+      - name: "Setup | Checkout sources"
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Initialize pinned integration repositories
+      - name: "Setup | Initialize pinned source repositories"
         run: git submodule update --init --recursive -- repositories/core repositories/platforms repositories/applications repositories/package_manager repositories/packages
-      - uses: ./.github/actions/setup-rust
+      - name: "Setup | Rust toolchain and build cache"
+        uses: ./.github/actions/setup-rust
         with:
           cache-enabled: "false"
-      - name: Bootstrap native integration dependencies with mise
+      - name: "Setup | Native build dependencies via mise"
         run: mise run ci:packages-integration
-      - name: Install Node dependencies from pinned lockfiles via mise
+      - name: "Setup | Locked Node dependencies via mise"
         run: mise run ci:node-dependencies
-      - run: mise run integration:metadata
-      - run: mise run integration:check
+      - name: "Validate | Cross-repository Cargo graph"
+        run: mise run integration:metadata
+      - name: "Test | Cross-repository integration"
+        run: mise run integration:check
 
   required:
     if: always()
@@ -51,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require successful workspace validation
+      - name: "Gate | Verify workspace validations"
         env:
           QUALITY: ${{ needs.quality.result }}
           INTEGRATION: ${{ needs.integration.result }}

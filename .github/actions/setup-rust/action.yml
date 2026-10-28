@@ -28,16 +28,16 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install mise
+    - name: "Setup | Activate mise"
       uses: jdx/mise-action@v5.2.2
-    - name: Activate caller's pinned toolchain
+    - name: "Setup | Pinned Rust toolchain"
       id: toolchain
       shell: bash
       env:
         MISE_ENV: ci
         XILA_TOOLCHAIN_TASK: ${{ inputs.toolchain-task }}
       run: mise run "$XILA_TOOLCHAIN_TASK"
-    - name: Setup mr-boxington build cache
+    - name: "Setup | mr-boxington build cache"
       if: ${{ inputs.cache-enabled == 'true' }}
       uses: jdx/mr-boxington-action@v1
       with:
@@ -46,7 +46,7 @@ runs:
         cache-generation: ${{ inputs.cache-generation }}
         working-directory: ${{ inputs.working-directory }}
         save-on-workflow-dispatch: ${{ inputs.save-on-workflow-dispatch }}
-    - name: Activate caller's opt-in Cargo wrapper
+    - name: "Setup | Optional Cargo wrapper"
       if: ${{ inputs.cache-enabled == 'true' }}
       shell: bash
       run: echo 'XILA_MBX=1' >> "$GITHUB_ENV"
