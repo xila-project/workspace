@@ -14,6 +14,9 @@ combinations* of repositories, not floating `main` branches.
 git clone --recurse-submodules https://github.com/xila-project/workspace.git
 cd workspace
 mise run workspace:validate
+# On Debian/Ubuntu, install required native development libraries first:
+mise run ci:packages-integration
+mise run ci:node-dependencies
 mise run integration:metadata
 mise run integration:check
 ```
@@ -47,8 +50,13 @@ validating compatibility. Updating a submodule does not push to that repository.
 - `.github/workflows/quality.yml`: reusable formatting/actionlint workflow for
   Xila repositories, to be adopted as consumers are migrated.
 - `.github/workflows/ci.yml`: workspace-only integration gate using pinned
-  submodules. It uses `platforms/tools/dev/local_overrides.py` to patch Git
-  Cargo dependencies to the locally checked-out Core and Applications sources.
+  submodules. Native dependencies are owned by Platforms' `mise.ci.toml` and
+  applied through its `ci:packages-host` task from
+  `mise run ci:packages-integration`; Workspace keeps no duplicate package list.
+  Node tools and locked npm dependencies are installed through
+  `mise run ci:node-dependencies`. Integration uses
+  `platforms/tools/dev/local_overrides.py` to patch Cargo dependencies to
+  locally checked-out sources.
 
 The integration job initially disables the mr-boxington cache because it runs
 raw Cargo commands from a shell script; enabling it before these commands use
@@ -64,3 +72,13 @@ The workspace owns orchestration, shared CI tooling and integration checks.
 Platform firmware, filesystem images, Wasm demos, package content and app
 sources remain owned by their individual repositories. This repository does
 not build or publish a Docker development image.
+
+## Shared package bootstrap dependency
+
+The integration task delegates native Linux package installation to the pinned
+Platforms submodule (`mise -E ci run ci:packages-host`). The native package
+list remains owned exclusively by Platforms. This workspace revision is paired
+with Platforms' proposed mise bootstrap migration (platforms PR #37). Do not
+merge this workspace PR while its `repositories/platforms` gitlink points to
+an unmerged PR commit; after Platforms #37 merges, repin that gitlink to the
+final `platforms/main` SHA and rerun the workspace integration gate.

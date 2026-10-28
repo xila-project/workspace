@@ -1,0 +1,45 @@
+name: Setup Xila Node.js and npm dependencies
+description: Install the caller's mise-pinned Node toolchain, cache npm downloads and optionally install locked dependencies
+inputs:
+  working-directory:
+    description: Relative path to the Node.js project
+    required: false
+    default: .
+  cache-dependency-path:
+    description: Lockfile glob relative to the checkout root, used to scope the npm cache
+    required: false
+    default: package-lock.json
+  cache-enabled:
+    description: Restore and save the npm download cache
+    required: false
+    default: "true"
+  install-dependencies:
+    description: Run npm ci in the configured project directory
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Install mise and caller-pinned Node.js
+      uses: jdx/mise-action@v5.2.2
+    - name: Restore locked npm download cache
+      if: ${{ inputs.cache-enabled == 'true' }}
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: npm-${{ runner.os }}-${{ hashFiles(inputs.cache-dependency-path) }}
+        restore-keys: |
+          npm-${{ runner.os }}-
+    - name: Install locked Node.js dependencies
+      if: ${{ inputs.install-dependencies == 'true' }}
+      shell: bash
+      env:
+        XILA_NODE_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        cd "$XILA_NODE_WORKING_DIRECTORY"
+        if [[ ! -f package-lock.json ]]; then
+          echo "::error::package-lock.json is required for npm ci"
+          exit 1
+        fi
+        mise exec -- npm ci

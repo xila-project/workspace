@@ -17,6 +17,10 @@ inputs:
     description: Repository/job-specific cache generation key
     required: false
     default: v1
+  save-on-workflow-dispatch:
+    description: Allow cache upload from a trusted, manually dispatched run
+    required: false
+    default: "false"
   working-directory:
     description: Cargo workspace containing the cached target directory
     required: false
@@ -41,6 +45,7 @@ runs:
         github-cache-mode: ${{ inputs.cache-mode }}
         cache-generation: ${{ inputs.cache-generation }}
         working-directory: ${{ inputs.working-directory }}
+        save-on-workflow-dispatch: ${{ inputs.save-on-workflow-dispatch }}
     - name: Activate caller's opt-in Cargo wrapper
       if: ${{ inputs.cache-enabled == 'true' }}
       shell: bash
