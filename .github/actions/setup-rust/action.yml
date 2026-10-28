@@ -1,0 +1,47 @@
+name: Setup Xila Rust toolchain and compilation cache
+description: Prepare the caller repository's mise-pinned Rust toolchain and optionally mr-boxington
+inputs:
+  toolchain-task:
+    description: mise task that emits version=<toolchain> to GITHUB_OUTPUT
+    required: false
+    default: ci:toolchain
+  cache-enabled:
+    description: Enable mr-boxington for subsequent mise tasks
+    required: false
+    default: "true"
+  cache-mode:
+    description: mr-boxington GitHub cache mode (target or objects)
+    required: false
+    default: target
+  cache-generation:
+    description: Repository/job-specific cache generation key
+    required: false
+    default: v1
+  working-directory:
+    description: Cargo workspace containing the cached target directory
+    required: false
+    default: .
+runs:
+  using: composite
+  steps:
+    - name: Install mise
+      uses: jdx/mise-action@v5.2.2
+    - name: Activate caller's pinned toolchain
+      id: toolchain
+      shell: bash
+      env:
+        MISE_ENV: ci
+        XILA_TOOLCHAIN_TASK: ${{ inputs.toolchain-task }}
+      run: mise run "$XILA_TOOLCHAIN_TASK"
+    - name: Setup mr-boxington build cache
+      if: ${{ inputs.cache-enabled == 'true' }}
+      uses: jdx/mr-boxington-action@v1
+      with:
+        toolchain: ${{ steps.toolchain.outputs.version }}
+        github-cache-mode: ${{ inputs.cache-mode }}
+        cache-generation: ${{ inputs.cache-generation }}
+        working-directory: ${{ inputs.working-directory }}
+    - name: Activate caller's opt-in Cargo wrapper
+      if: ${{ inputs.cache-enabled == 'true' }}
+      shell: bash
+      run: echo 'XILA_MBX=1' >> "$GITHUB_ENV"

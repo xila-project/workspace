@@ -1,5 +1,5 @@
-# Local tooling and planning state.
+# Local-only development and agent state.
 .superpowers/
-
-# Per-workspace container state created by scripts/xila-dev.
+.mise/
+target/
 .dev-environment/

@@ -1,0 +1,17 @@
+name: Shared Rust formatting and workflow lint
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MISE_ENV: ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5.2.2
+      - run: mise run ci:format-rust
+      - run: mise run ci:format-toml
+      - run: mise run ci:lint-workflows

@@ -1,0 +1,44 @@
+[submodule "repositories/.github"]
+	path = repositories/.github
+	url = https://github.com/xila-project/.github.git
+	branch = main
+[submodule "repositories/Assets"]
+	path = repositories/Assets
+	url = https://github.com/xila-project/Assets.git
+	branch = main
+[submodule "repositories/applications"]
+	path = repositories/applications
+	url = https://github.com/xila-project/applications.git
+	branch = main
+[submodule "repositories/brand"]
+	path = repositories/brand
+	url = https://github.com/xila-project/brand.git
+	branch = main
+[submodule "repositories/core"]
+	path = repositories/core
+	url = https://github.com/xila-project/core.git
+	branch = main
+[submodule "repositories/lovyan-gfx-sys"]
+	path = repositories/lovyan-gfx-sys
+	url = https://github.com/xila-project/lovyan-gfx-sys.git
+	branch = main
+[submodule "repositories/package_manager"]
+	path = repositories/package_manager
+	url = https://github.com/xila-project/package_manager.git
+	branch = main
+[submodule "repositories/packages"]
+	path = repositories/packages
+	url = https://github.com/xila-project/packages.git
+	branch = main
+[submodule "repositories/platforms"]
+	path = repositories/platforms
+	url = https://github.com/xila-project/platforms.git
+	branch = main
+[submodule "repositories/wasm_application_template"]
+	path = repositories/wasm_application_template
+	url = https://github.com/xila-project/wasm_application_template.git
+	branch = main
+[submodule "repositories/website"]
+	path = repositories/website
+	url = https://github.com/xila-project/website.git
+	branch = main
