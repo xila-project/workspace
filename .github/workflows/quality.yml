@@ -1,17 +1,37 @@
-name: Shared Rust formatting and workflow lint
+name: Shared Rust quality
 on:
   workflow_call:
+    inputs:
+      extra-task:
+        description: "Repository-specific additional quality checks configured in its own mise.ci.toml"
+        type: string
+        required: false
+        default: ci:quality-extra
+
 permissions:
   contents: read
+
 jobs:
   quality:
+    name: Rust and repository policies
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       MISE_ENV: ci
     steps:
-      - uses: actions/checkout@v7
-      - uses: jdx/mise-action@v5.2.2
-      - run: mise run ci:format-rust
-      - run: mise run ci:format-toml
-      - run: mise run ci:lint-workflows
+      - name: "Setup | Checkout sources"
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.2
+      - name: "Lint | Rust formatting"
+        run: mise run ci:format-rust
+      - name: "Lint | TOML formatting"
+        run: mise run ci:format-toml
+      - name: "Test | Repository quality policies"
+        env:
+          XILA_QUALITY_EXTRA_TASK: ${{ inputs.extra-task }}
+        run: mise run "$XILA_QUALITY_EXTRA_TASK"
+      - name: "Lint | GitHub Actions"
+        run: mise run ci:lint-workflows
