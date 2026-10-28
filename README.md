@@ -14,6 +14,9 @@ combinations* of repositories, not floating `main` branches.
 git clone --recurse-submodules https://github.com/xila-project/workspace.git
 cd workspace
 mise run workspace:validate
+# On Debian/Ubuntu, install required native development libraries first:
+mise run ci:packages-integration
+mise run ci:node-dependencies
 mise run integration:metadata
 mise run integration:check
 ```
@@ -47,7 +50,9 @@ validating compatibility. Updating a submodule does not push to that repository.
 - `.github/workflows/quality.yml`: reusable formatting/actionlint workflow for
   Xila repositories, to be adopted as consumers are migrated.
 - `.github/workflows/ci.yml`: workspace-only integration gate using pinned
-  submodules. It uses `platforms/tools/dev/local_overrides.py` to patch Git
+  submodules. Native dependencies are declared in `mise/shared.toml` and
+  installed through `mise run ci:packages-integration`. Node tools and locked
+  npm dependencies are installed by `mise run ci:node-dependencies`. It uses `platforms/tools/dev/local_overrides.py` to patch Git
   Cargo dependencies to the locally checked-out Core and Applications sources.
 
 The integration job initially disables the mr-boxington cache because it runs

@@ -2,6 +2,7 @@
 """Validate the workspace's tracked Git submodules without network access."""
 from configparser import ConfigParser
 from pathlib import Path
+import tomllib
 import subprocess
 import sys
 
@@ -46,7 +47,24 @@ def main() -> int:
     if set(paths) != set(links):
         raise SystemExit(f"Gitlinks and .gitmodules differ: configured={sorted(paths)}, tracked={sorted(links)}")
 
-    print(f"Validated {len(links)} pinned Xila submodules")
+    # Keep system package declarations in mise, never inline apt in Actions.
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    if "apt-get" in workflow or "mise run ci:packages-integration" not in workflow or "mise run ci:node-dependencies" not in workflow:
+        raise SystemExit("Workspace CI must bootstrap system packages through mise")
+
+    shared = tomllib.loads((ROOT / "mise/shared.toml").read_text())
+    declared = shared.get("bootstrap", {}).get("packages", {})
+    required_packages = {
+        "apt:clang", "apt:libclang-dev", "apt:pkg-config",
+        "apt:libasound2-dev", "apt:libudev-dev", "apt:libxkbcommon-dev",
+        "apt:libwayland-dev", "apt:libx11-dev", "apt:libxkbcommon-x11-dev",
+    }
+    if not required_packages.issubset(declared):
+        raise SystemExit(f"Missing native mise packages: {sorted(required_packages - set(declared))}")
+    if any(declared[package].get("env") != "workspace-integration" for package in required_packages):
+        raise SystemExit("Integration packages must be scoped to the workspace-integration environment")
+
+    print(f"Validated {len(links)} pinned Xila submodules and mise-owned native packages")
     return 0
 
 

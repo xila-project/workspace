@@ -37,6 +37,19 @@ tools."aqua:rhysd/actionlint" = "{{ vars.actionlint_version }}"
 tools."aqua:koalaman/shellcheck" = "{{ vars.shellcheck_version }}"
 run = "actionlint"
 
+[tasks."ci:packages-integration"]
+description = "Install only the native packages needed by the Linux integration runner"
+run = "mise -E workspace-integration bootstrap packages apply --manager apt --update --yes"
+
+[tasks."ci:node-dependencies"]
+description = "Install pinned font conversion and localization tooling for integration submodules"
+tools.node = "{{ vars.node_version }}"
+run = """
+set -eu
+npm ci --prefix repositories/platforms
+npm ci --prefix repositories/applications
+"""
+
 [tasks."integration:metadata"]
 description = "Resolve the Xila multi-repository Cargo graph with local source patches"
 tools.rust = { version = "{{ vars.rust_version }}", profile = "minimal" }
