@@ -1,0 +1,48 @@
+include = ["mise/shared.toml"]
+
+[tasks."repositories:initialize"]
+description = "Initialize every pinned Git submodule"
+run = "git submodule update --init --recursive"
+
+[tasks."repositories:initialize-runtime"]
+description = "Initialize the repositories needed for integration validation"
+run = "git submodule update --init --recursive -- repositories/core repositories/platforms repositories/applications repositories/package_manager repositories/packages"
+
+[tasks."repositories:status"]
+description = "Show current pinned and checked-out submodule revisions"
+run = "git submodule status"
+
+[tasks."repositories:update"]
+description = "Explicitly advance submodules to their configured main branches; review and commit the resulting gitlinks"
+run = "git submodule update --init --remote --recursive && git diff --submodule=log"
+
+[tasks."workspace:validate"]
+description = "Verify gitlinks, repository URLs and workspace structure"
+run = "python3 scripts/validate_workspace.py"
+
+[tasks."ci:toolchain"]
+description = "Prepare the pinned Rust toolchain for the shared GitHub Action"
+tools.rust = { version = "{{ vars.rust_version }}", profile = "minimal", components = ["rustfmt", "clippy"], targets = ["wasm32-wasip1", "wasm32-unknown-unknown"] }
+run = '''
+set -eu
+rustc --version
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  echo "version={{ vars.rust_version }}" >> "$GITHUB_OUTPUT"
+fi
+'''
+
+[tasks."ci:lint-workflows"]
+description = "Run actionlint with ShellCheck for workspace workflows"
+tools."aqua:rhysd/actionlint" = "{{ vars.actionlint_version }}"
+tools."aqua:koalaman/shellcheck" = "{{ vars.shellcheck_version }}"
+run = "actionlint"
+
+[tasks."integration:metadata"]
+description = "Resolve the Xila multi-repository Cargo graph with local source patches"
+tools.rust = { version = "{{ vars.rust_version }}", profile = "minimal" }
+run = "bash scripts/integration/check.sh metadata"
+
+[tasks."integration:check"]
+description = "Validate native and Wasm integration across pinned repositories"
+tools.rust = { version = "{{ vars.rust_version }}", profile = "minimal", components = ["rustfmt"], targets = ["wasm32-wasip1", "wasm32-unknown-unknown"] }
+run = "bash scripts/integration/check.sh check"

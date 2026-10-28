@@ -1,0 +1,15 @@
+# Shared, version-pinned tooling for Xila repositories.
+# Consumers may include this file from a pinned workspace revision.
+[vars]
+rust_version = "1.99.0"
+nightly_version = "nightly-2026-10-12"
+node_version = "24.22.0"
+taplo_version = "0.10.0"
+actionlint_version = "1.7.7"
+shellcheck_version = "0.11.0"
+mr_boxington_version = "1.26.0"
+
+[wrappers.cargo]
+command = "env"
+args = ["{% if env.XILA_MBX | default(value='0') == '1' %}mbx{% else %}cargo{% endif %}"]
+env = { MBX_CARGO_SHIM_MODE = "1" }
