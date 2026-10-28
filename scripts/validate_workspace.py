@@ -49,7 +49,7 @@ def main() -> int:
 
     # Keep system package declarations in mise, never inline apt in Actions.
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-    if "apt-get" in workflow or "mise run ci:packages-integration" not in workflow:
+    if "apt-get" in workflow or "mise run ci:packages-integration" not in workflow or "mise run ci:node-dependencies" not in workflow:
         raise SystemExit("Workspace CI must bootstrap system packages through mise")
 
     shared = tomllib.loads((ROOT / "mise/shared.toml").read_text())

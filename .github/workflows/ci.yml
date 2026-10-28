@@ -40,6 +40,8 @@ jobs:
           cache-enabled: "false"
       - name: Bootstrap native integration dependencies with mise
         run: mise run ci:packages-integration
+      - name: Install Node dependencies from pinned lockfiles via mise
+        run: mise run ci:node-dependencies
       - run: mise run integration:metadata
       - run: mise run integration:check
 
