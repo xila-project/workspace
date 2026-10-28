@@ -11,8 +11,9 @@ These are **Xila conventions**, not rules imposed by GitHub.
   `required`, or other protected check contexts, as part of a cosmetic change.
 - **Job display `name`**: `Domain / Target`, e.g. `Build / Native`,
   `Build / WASI guests`, `Test / ABI (${{ matrix.memory }})`,
-  `Quality / Rust`, `Integration / Cross-repository`. Retain `Required`
-  for the final branch-protection gate.
+  `Quality / Rust`, `Integration / Cross-repository`. Retain the **exact
+  existing display name** of the final branch-protection check (`Required` or
+  `required`, depending on the repository).
 - **Step display `name`**: `Category | Verb + object` in English:
   `Setup | Checkout sources`, `Setup | Rust and build cache`,
   `Lint | Rust formatting`, `Lint | Native drivers`,
@@ -51,7 +52,7 @@ Keep a final job whose ID is `required`, `if: always()`, and whose `needs`
 list includes every mandatory validation job. Preserve matrix coverage, cache
 modes, artifact paths and release gating. Display-name changes can alter
 GitHub required-check contexts, so verify the repository ruleset before
-merging. Do not rename the final Required context without an explicit
+merging. Do not rename the final required-check context without an explicit
 branch-protection migration.
 
 ### Reusable quality contract
@@ -73,3 +74,13 @@ collapsing the entire job into an opaque script.
   https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
 - GitHub reusable workflows versus composite actions:
   https://docs.github.com/en/actions/concepts/workflows-and-actions/reusing-workflow-configurations
+
+## Adoption order
+
+1. Merge the prerequisite Workspace integration/bootstrap changes in #4.
+2. Merge this shared naming/quality workflow PR after its CI is green on top of #4.
+3. Update Core, Platforms and Applications consumers to pin the **final merged
+   `workspace/main` commit SHA**. Do not merge consumers using the temporary
+   pre-merge quality workflow SHA.
+4. Confirm each repository's configured required status checks, then merge
+   consumers independently.
