@@ -10,8 +10,13 @@ jobs:
     env:
       MISE_ENV: ci
     steps:
-      - uses: actions/checkout@v7
-      - uses: jdx/mise-action@v5.2.2
-      - run: mise run ci:format-rust
-      - run: mise run ci:format-toml
-      - run: mise run ci:lint-workflows
+      - name: "Setup | Checkout sources"
+        uses: actions/checkout@v7
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.2
+      - name: "Lint | Rust formatting"
+        run: mise run ci:format-rust
+      - name: "Lint | TOML formatting"
+        run: mise run ci:format-toml
+      - name: "Lint | GitHub Actions"
+        run: mise run ci:lint-workflows
