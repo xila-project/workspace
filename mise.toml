@@ -38,8 +38,8 @@ tools."aqua:koalaman/shellcheck" = "{{ vars.shellcheck_version }}"
 run = "actionlint"
 
 [tasks."ci:packages-integration"]
-description = "Install only the native packages needed by the Linux integration runner"
-run = "mise -E workspace-integration bootstrap packages apply --manager apt --update --yes"
+description = "Reuse the platform's native Linux package bootstrap; do not replicate its package list"
+run = "cd repositories/platforms && mise -E ci run ci:packages-host"
 
 [tasks."ci:node-dependencies"]
 description = "Install pinned font conversion and localization tooling for integration submodules"
