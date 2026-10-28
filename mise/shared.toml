@@ -13,3 +13,16 @@ mr_boxington_version = "1.26.0"
 command = "env"
 args = ["{% if env.XILA_MBX | default(value='0') == '1' %}mbx{% else %}cargo{% endif %}"]
 env = { MBX_CARGO_SHIM_MODE = "1" }
+
+# Native libraries for the workspace integration runner (Linux/apt).
+# mise install does not apply system packages; CI calls bootstrap explicitly.
+[bootstrap.packages]
+"apt:clang" = { env = "workspace-integration" }
+"apt:libclang-dev" = { env = "workspace-integration" }
+"apt:pkg-config" = { env = "workspace-integration" }
+"apt:libasound2-dev" = { env = "workspace-integration" }
+"apt:libudev-dev" = { env = "workspace-integration" }
+"apt:libxkbcommon-dev" = { env = "workspace-integration" }
+"apt:libwayland-dev" = { env = "workspace-integration" }
+"apt:libx11-dev" = { env = "workspace-integration" }
+"apt:libxkbcommon-x11-dev" = { env = "workspace-integration" }

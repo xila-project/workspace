@@ -38,10 +38,8 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           cache-enabled: "false"
-      - name: Install native build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang libclang-dev pkg-config libasound2-dev libudev-dev libxkbcommon-dev libwayland-dev libx11-dev libxkbcommon-x11-dev
+      - name: Bootstrap native integration dependencies with mise
+        run: mise run ci:packages-integration
       - run: mise run integration:metadata
       - run: mise run integration:check
 
