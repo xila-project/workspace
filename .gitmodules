@@ -2,10 +2,6 @@
 	path = repositories/.github
 	url = https://github.com/xila-project/.github.git
 	branch = main
-[submodule "repositories/Assets"]
-	path = repositories/Assets
-	url = https://github.com/xila-project/Assets.git
-	branch = main
 [submodule "repositories/applications"]
 	path = repositories/applications
 	url = https://github.com/xila-project/applications.git
@@ -17,10 +13,6 @@
 [submodule "repositories/core"]
 	path = repositories/core
 	url = https://github.com/xila-project/core.git
-	branch = main
-[submodule "repositories/lovyan-gfx-sys"]
-	path = repositories/lovyan-gfx-sys
-	url = https://github.com/xila-project/lovyan-gfx-sys.git
 	branch = main
 [submodule "repositories/package_manager"]
 	path = repositories/package_manager
