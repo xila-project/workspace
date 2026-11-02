@@ -4,7 +4,7 @@ This is the Xila **multi-repository workspace**: it orchestrates the public `xil
 
 Layout:
 
-- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `packages`, `website`, `brand`, `wasm_application_template`, `.github`). Private and archived repositories are deliberately excluded.
+- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `website`, `brand`, `wasm_application_template`, `.github`). Private and archived repositories are deliberately excluded.
 - `mise.toml`: workspace tasks. `mise/shared.toml`: version pins in `[vars]` and the Cargo wrapper; consumer repositories may include it from a pinned workspace revision, so treat its variables as a public interface.
 - `scripts/validate_workspace.py`: offline validation of `.gitmodules`, gitlinks and CI invariants.
 - `scripts/integration/check.sh`: cross-repository Cargo graph resolution (`metadata`) and native/Wasm builds (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
@@ -20,7 +20,7 @@ Layout:
 | `applications` | All native and Wasm applications, the Wasm host/guest API, the on-device `package` install executable, and building/publishing Wasm application packages. |
 | `platforms` | Platform drivers, per-platform examples and the seeded filesystem image; it is the integration point that assembles everything. |
 | `package_manager` | Single source of truth for package build, manifest, signing, verification and registry logic: `no_std` libraries, reusable packaging workflows and the desktop `xila-package` CLI, which should expose every such feature. |
-| `packages` | apt-like package registry: per-version declarations (archives stay in releases), signed by the repository key, plus the published developer keys. |
+| `registry` | Package registry (metadata only, like `crates.io-index`): per-version registry entries generated from signed archives, which stay in each project's releases, plus the published developer keys; signed by the repository key. |
 
 ## Dependency direction
 
@@ -40,7 +40,7 @@ platforms       ← core, applications (dev-dependencies only, for tests)
 ## Package trust model
 
 - **Developer (publisher) key** signs each `.xpk` manifest and its SHA-256 file inventory.
-- **Repository key** signs registry entries (identifier, version, archive SHA-256 and size, authorized developer key) and the developer-key list in `packages`.
+- **Repository key** signs registry entries (identifier, version, archive SHA-256 and size, authorized developer key) and the developer-key list in `registry`.
 - Devices trust the repository key; installation verifies repository key → developer key → package signature → file hashes. Keep the two keys separate, and never treat a developer key as a trust anchor.
 
 # Build & Test Commands
@@ -61,7 +61,7 @@ All task names use `<namespace>:<command>`. Tasks declare their own tools, so ru
 
 - **Ownership boundary.** The workspace owns orchestration, shared CI tooling and integration checks only. Firmware, filesystem images, Wasm demos, package content, app sources, issue/PR templates (in `xila-project/.github`) and the native package list (in Platforms' `mise.ci.toml`) belong to their own repositories. Do not duplicate them here; delegate instead.
 - **Native packages.** Never add `apt-get` to workflows or a `[bootstrap] packages` table to `mise/shared.toml`. `ci:packages-integration` must keep delegating to `cd repositories/platforms && mise -E ci run ci:packages-host`. `validate_workspace.py` enforces this and also checks that the pinned Platforms revision still provides that task and the required packages.
-- **Submodule rules** (enforced by `validate_workspace.py`): each path is `repositories/<name>`, its URL is exactly `https://github.com/xila-project/<name>.git`, it tracks `branch = main`, and `.gitmodules` and the tracked gitlinks match one-to-one. `core`, `platforms`, `applications`, `package_manager` and `packages` are required for integration. When adding or removing a repository, update `.gitmodules`, the gitlink, `REQUIRED` in the validator (if relevant), `repositories:initialize-runtime`, the CI checkout step and the README together.
+- **Submodule rules** (enforced by `validate_workspace.py`): each path is `repositories/<name>`, its URL is exactly `https://github.com/xila-project/<name>.git`, it tracks `branch = main`, and `.gitmodules` and the tracked gitlinks match one-to-one. `core`, `platforms`, `applications`, `package_manager` and `registry` are required for integration. When adding or removing a repository, update `.gitmodules`, the gitlink, `REQUIRED` in the validator (if relevant), `repositories:initialize-runtime`, the CI checkout step and the README together.
 - **Pinned, not floating.** CI validates the specific committed gitlink combination. Updating submodules only moves the local checkout; the gitlink change must be reviewed and committed in this repository. Never push to a submodule's remote as a side effect of workspace work.
 - **Do not repin to unmerged commits.** A gitlink on `main` must point to a commit reachable from that submodule's `main`. Temporary pins to PR branches are acceptable only in a draft PR and must be repinned to the merged SHA before merge.
 - **Versions.** Tool versions live in `[vars]` in `mise/shared.toml` and are referenced as `{{ vars.<name> }}`; do not hard-code versions in tasks or workflows. Pin GitHub Actions to explicit versions, and tell consumers to reference workspace actions and workflows by full commit SHA.

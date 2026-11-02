@@ -6,7 +6,7 @@ run = "git submodule update --init --recursive"
 
 [tasks."repositories:initialize-runtime"]
 description = "Initialize the repositories needed for integration validation"
-run = "git submodule update --init --recursive -- repositories/core repositories/platforms repositories/applications repositories/package_manager repositories/packages"
+run = "git submodule update --init --recursive -- repositories/core repositories/platforms repositories/applications repositories/package_manager repositories/registry"
 
 [tasks."repositories:status"]
 description = "Show current pinned and checked-out submodule revisions"

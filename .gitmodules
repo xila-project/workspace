@@ -18,9 +18,9 @@
 	path = repositories/package_manager
 	url = https://github.com/xila-project/package_manager.git
 	branch = main
-[submodule "repositories/packages"]
-	path = repositories/packages
-	url = https://github.com/xila-project/packages.git
+[submodule "repositories/registry"]
+	path = repositories/registry
+	url = https://github.com/xila-project/registry.git
 	branch = main
 [submodule "repositories/platforms"]
 	path = repositories/platforms
