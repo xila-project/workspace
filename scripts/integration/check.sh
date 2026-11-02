@@ -22,7 +22,18 @@ if [[ "$mode" != "metadata" && "$mode" != "check" ]]; then
 fi
 
 workdir="$(mktemp -d)"
-trap 'rm -rf "$workdir"' EXIT
+# Local source patches make Cargo rewrite each checkout's lockfile; restore
+# them so an integration run never leaves the submodules modified.
+for repository in "$platforms" "$applications"; do
+  cp "$repository/Cargo.lock" "$workdir/$(basename "$repository").Cargo.lock"
+done
+restore() {
+  for repository in "$platforms" "$applications"; do
+    cp "$workdir/$(basename "$repository").Cargo.lock" "$repository/Cargo.lock"
+  done
+  rm -rf "$workdir"
+}
+trap restore EXIT
 patch="$workdir/xila-local.toml"
 python3 "$platforms/tools/dev/local_overrides.py" \
   --core "$core" --platforms "$platforms" --applications "$applications" --output "$patch"
