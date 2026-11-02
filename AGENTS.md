@@ -12,6 +12,37 @@ Layout:
 - `.github/workflows/quality.yml`: reusable `workflow_call` workflow for consumer repositories; it calls `ci:format-rust`, `ci:format-toml` and `ci:lint-workflows`, which the **caller** must define.
 - `.github/actions/setup-rust/`, `.github/actions/setup-node/`: reusable composite actions for consumer repositories.
 
+## Repository responsibilities
+
+| Repository | Owns |
+|---|---|
+| `core` | Kernel subsystems and reusable libraries. |
+| `applications` | All native and Wasm applications, the Wasm host/guest API, the on-device `package` install executable, and building/publishing Wasm application packages. |
+| `platforms` | Platform drivers, per-platform examples and the seeded filesystem image; it is the integration point that assembles everything. |
+| `package_manager` | Single source of truth for package build, manifest, signing, verification and registry logic: `no_std` libraries, reusable packaging workflows and the desktop `xila-package` CLI, which should expose every such feature. |
+| `packages` | apt-like package registry: per-version declarations (archives stay in releases), signed by the repository key, plus the published developer keys. |
+
+## Dependency direction
+
+`A ← B` means B depends on A.
+
+```
+core            ← applications, platforms
+package_manager ← applications, platforms
+applications    ← platforms
+platforms       ← core, applications (dev-dependencies only, for tests)
+```
+
+- `core` must not depend on another Xila repository, except Platforms test drivers as dev-dependencies. Known exception to remove later: `core/libraries/firmware_update` uses `xila-package-verification`.
+- `package_manager` is a leaf: it must not depend on any Xila repository, so every consumer can reuse its verification code without cycles.
+- Put new signing, verification, manifest or registry logic in `package_manager` (library + CLI), not in scripts in other repositories.
+
+## Package trust model
+
+- **Developer (publisher) key** signs each `.xpk` manifest and its SHA-256 file inventory.
+- **Repository key** signs registry entries (identifier, version, archive SHA-256 and size, authorized developer key) and the developer-key list in `packages`.
+- Devices trust the repository key; installation verifies repository key → developer key → package signature → file hashes. Keep the two keys separate, and never treat a developer key as a trust anchor.
+
 # Build & Test Commands
 
 - Validate workspace structure (no network, no submodules needed): `mise run workspace:validate`
