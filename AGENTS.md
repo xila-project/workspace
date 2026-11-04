@@ -9,7 +9,7 @@ Layout:
 - `scripts/validate_workspace.py`: offline validation of `.gitmodules`, gitlinks and CI invariants.
 - `scripts/integration/check.sh`: cross-repository Cargo graph resolution (`metadata`) and native/Wasm builds (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
 - `.github/workflows/ci.yml`: the workspace's own gate (quality → integration → `required`).
-- `.github/workflows/quality.yml`: reusable `workflow_call` workflow for consumer repositories; it calls `ci:format-rust`, `ci:format-toml` and `ci:lint-workflows`, which the **caller** must define.
+- `.github/workflows/quality.yml`: reusable `workflow_call` workflow for consumer repositories; it calls `ci:format-rust`, `ci:format-toml` and `ci:lint-workflows`, which the **caller** must define, plus the optional `extra-task` input (a caller task such as `ci:quality-extra`). Consumers must pin it to a commit on workspace `main`: Actions cannot load a reusable workflow from a commit that is only on a deleted branch.
 - `.github/actions/setup-rust/`, `.github/actions/setup-node/`: reusable composite actions for consumer repositories.
 
 ## Repository responsibilities
