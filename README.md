@@ -1,4 +1,13 @@
-# Xila workspace
+<h1>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/brand/header-dark.svg">
+  <img src=".github/brand/header-light.svg" alt="Xila Workspace — Shared tooling and cross-repository integration." width="1280">
+</picture>
+</h1>
+
+[Documentation](https://www.xila.dev/docs/) ·
+[Try Xila](https://platforms.xila.dev/) ·
+[Community](https://matrix.to/#/#xila:anneraud.fr)
 
 This repository is the **multi-repository development and integration workspace**
 for Xila. It replaces the legacy Docker-based development image with native
@@ -82,3 +91,13 @@ with Platforms' proposed mise bootstrap migration (platforms PR #37). Do not
 merge this workspace PR while its `repositories/platforms` gitlink points to
 an unmerged PR commit; after Platforms #37 merges, repin that gitlink to the
 final `platforms/main` SHA and rerun the workspace integration gate.
+
+<!-- xila:footer:start -->
+
+---
+
+Part of **[Xila](https://www.xila.dev/)** ·
+[Repositories](https://github.com/xila-project) ·
+[Community](https://matrix.to/#/#xila:anneraud.fr)
+
+<!-- xila:footer:end -->
