@@ -75,6 +75,57 @@ does support it for consumer workflows whose Cargo tasks run through mise.
 Default issue and PR templates are stored in the separate organization-wide
 `xila-project/.github` repository. Do not duplicate them here.
 
+## Vulnerability inventory
+
+The workspace orchestrates a daily and manually triggered source SBOM inventory at
+[https://vulnerabilities.xila.dev/](https://vulnerabilities.xila.dev/). It scans the current
+`main` of every public repository listed in `.gitmodules`, plus this workspace, as separate
+Nanobom projects. This current-source inventory is separate from the pinned integration gate;
+it never updates or commits gitlinks. The `.github` repository maps to project
+`github-community`, because Nanobom project slugs must begin with a letter or digit.
+
+Set up a **Whole organization**, **Upload and read** token in the Xila organization's
+Nanobom **Settings → API tokens**, then store it with the GitHub CLI's hidden prompt:
+
+```sh
+gh secret set NANOBOM_TOKEN --org xila-project --visibility all
+```
+
+This is a Nanobom upload token, not a GitHub personal access token. GitHub organization owner
+access is needed to create the organization Actions secret. Only this workspace workflow
+currently consumes it; for narrower GitHub access use `--visibility selected --repos workspace`
+instead of `--visibility all`.
+
+The workflow defaults to the supplied instance URL and Nanobom organization slug
+`xila-project`. If the instance uses a different slug, set the organization Actions variable
+`NANOBOM_ORGANIZATION` to that slug. `NANOBOM_URL` optionally overrides the instance URL.
+After merging the workflow and configuring the secret, run it once:
+
+```sh
+gh workflow run nanobom.yml --repo xila-project/workspace
+```
+
+Uploads run only on the schedule or explicit dispatch, never on pull requests. Each upload
+records the scanned repository's actual commit rather than the workspace workflow commit.
+The pinned Nanobom action generates CycloneDX JSON with Syft without running project code,
+then uploads it and reports evaluation results in the Actions summary. An organization token
+creates projects on their first upload.
+
+Initially this is tracking only: existing CI and release gates are unchanged. Set the optional
+organization Actions variable `NANOBOM_FAIL_ON` to `exploited`, `high`, or another threshold
+supported by [nanobom-action](https://github.com/AlixANNERAUD/nanobom-action) to make the inventory
+job fail on those findings. `wait: true` reports completed evaluations; failed uploads fail
+the job, while evaluation status is also shown in the summary.
+
+The source inventory captures dependencies visible to the SBOM generator (including supported
+lockfiles). It is not a built firmware/container SBOM or a complete inventory of manually
+vendored C libraries and downloaded assets. Product repositories remain responsible for
+artifact-specific SBOMs. Private and archived repositories are excluded by the workspace's
+public repository list. No deployment or database administration of Nanobom is performed here.
+
+`mise run security:test` validates discovery offline. Live authenticated upload verification
+requires the configured token and is performed by the first workflow run.
+
 ## Ownership
 
 The workspace owns orchestration, shared CI tooling and integration checks.

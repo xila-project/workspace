@@ -1,0 +1,70 @@
+name: Nanobom vulnerability inventory
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nanobom-inventory
+  cancel-in-progress: false
+jobs:
+  repositories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.repositories.outputs.matrix }}
+    steps:
+      - name: "Setup | Checkout workspace inventory"
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.2
+      - name: "Validate | Enumerate public repositories"
+        id: repositories
+        run: mise run security:repositories
+
+  inventory:
+    needs: repositories
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJSON(needs.repositories.outputs.matrix) }}
+    name: "Inventory | ${{ matrix.repository }}"
+    steps:
+      - name: "Setup | Checkout workspace tooling"
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.2
+      - name: "Validate | Nanobom upload credentials"
+        env:
+          NANOBOM_TOKEN: ${{ secrets.NANOBOM_TOKEN }}
+        run: mise run security:credentials
+      - name: "Setup | Checkout current public source"
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ matrix.repository }}
+          ref: main
+          path: source
+          persist-credentials: false
+      - name: "Validate | Record scanned source revision"
+        id: source
+        run: mise run security:source-revision
+      - name: "Scan | Generate and upload source SBOM"
+        # nanobom-action v1.1.1; its Syft generator does not execute project builds.
+        uses: AlixANNERAUD/nanobom-action@5860bbf2b8b32a42d57f725c548f7be224c5fc03
+        with:
+          url: ${{ vars.NANOBOM_URL || 'https://vulnerabilities.xila.dev' }}
+          organization: ${{ vars.NANOBOM_ORGANIZATION || 'xila-project' }}
+          token: ${{ secrets.NANOBOM_TOKEN }}
+          project: ${{ matrix.project }}
+          scan-path: source
+          source-commit: ${{ steps.source.outputs.sha }}
+          wait: "true"
+          # Tracking initially; an organization variable can opt into a gate later.
+          fail-on: ${{ vars.NANOBOM_FAIL_ON || '' }}
