@@ -33,7 +33,8 @@ applications    ← platforms
 platforms       ← core, applications (dev-dependencies only, for tests)
 ```
 
-- `core` must not depend on another Xila repository, except Platforms test drivers as dev-dependencies. Known exception to remove later: `core/libraries/firmware_update` uses `xila-package-verification`.
+- `core` must not depend on another Xila repository, except Platforms test drivers as dev-dependencies. Known exception to remove later: the standalone CI probe `core/tools/verification_probe` (outside the Core Cargo workspace) pins `package_manager`'s verification crate; it belongs in `package_manager`.
+- Cross-repository Cargo git dependencies use `branch = "main"`, never `rev` or `tag`; `Cargo.lock` holds the exact commit, CI builds with `--locked`, and repinning is `cargo update -p <crate>`. Every repository must use the same reference so Cargo unifies Core, Applications and package_manager instead of resolving duplicate copies. Workflows that check out a matching repository read the locked commit (`tools/ci/locked_revision.py`) instead of hard-coding it. Release tags may switch back to immutable revisions.
 - `package_manager` is a leaf: it must not depend on any Xila repository, so every consumer can reuse its verification code without cycles.
 - Put new signing, verification, manifest or registry logic in `package_manager` (library + CLI), not in scripts in other repositories.
 
