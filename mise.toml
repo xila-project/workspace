@@ -59,19 +59,3 @@ run = "bash scripts/integration/check.sh metadata"
 description = "Validate native and Wasm integration across pinned repositories"
 tools.rust = { version = "{{ vars.rust_version }}", profile = "minimal", components = ["rustfmt"], targets = ["wasm32-wasip1", "wasm32-unknown-unknown"] }
 run = "bash scripts/integration/check.sh check"
-
-[tasks."security:repositories"]
-description = "List active public repositories for the Nanobom inventory"
-run = "python3 scripts/security/inventory.py repositories"
-
-[tasks."security:source-revision"]
-description = "Record the actual scanned source checkout revision"
-run = "python3 scripts/security/inventory.py source-revision"
-
-[tasks."security:credentials"]
-description = "Check Nanobom credentials without printing the upload token"
-run = "python3 scripts/security/inventory.py credentials"
-
-[tasks."security:test"]
-description = "Validate security inventory discovery without network access"
-run = "python3 -m unittest discover -s scripts/security -p 'test_*.py'"

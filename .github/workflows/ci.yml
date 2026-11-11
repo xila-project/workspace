@@ -23,8 +23,6 @@ jobs:
         run: python3 scripts/validate_workspace.py
       - name: "Setup | Activate mise"
         uses: jdx/mise-action@v5.2.2
-      - name: "Test | Security inventory discovery"
-        run: mise run security:test
       - name: "Lint | GitHub Actions"
         run: mise run ci:lint-workflows
 
