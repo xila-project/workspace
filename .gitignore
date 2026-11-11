@@ -3,3 +3,6 @@
 .mise/
 target/
 .dev-environment/
+
+# Python validation bytecode.
+__pycache__/
