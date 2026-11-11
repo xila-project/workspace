@@ -38,7 +38,7 @@ mise run repositories:initialize-runtime
 
 The `repositories/` directory contains Git submodules of all currently active
 **public** Xila organization repositories, including Core, Platforms,
-Applications, the package manager, the package registry, website, brand and other tooling.
+Applications, the package manager, the package registry, website, brand, media and other tooling.
 Private repositories (for example business plans) and archived repositories
 are deliberately excluded. A normal clone does not automatically download
 submodule content.
