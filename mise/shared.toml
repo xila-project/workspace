@@ -1,7 +1,7 @@
 # Shared, version-pinned tooling for Xila repositories.
 # Consumers may include this file from a pinned workspace revision.
 [vars]
-rust_version = "1.99.0"
+rust_version = "1.100.0"
 nightly_version = "nightly-2026-10-12"
 node_version = "24.22.0"
 taplo_version = "0.10.0"
