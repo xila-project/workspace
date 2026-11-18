@@ -22,7 +22,7 @@ on:
         default: ""
     secrets:
       NANOBOM_TOKEN:
-        description: "Nanobom upload token"
+        description: "Upload token for the Nanobom project"
         required: true
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
           INPUT_PROJECT: ${{ inputs.project }}
         run: |
           if [ -z "${NANOBOM_TOKEN// }" ]; then
-            echo "::error::Set the organization Actions secret NANOBOM_TOKEN to a Nanobom upload token before running this workflow."
+            echo "::error::Set the repository Actions secret NANOBOM_TOKEN to this project's Nanobom upload token before running this workflow."
             exit 1
           fi
           if [ -n "$INPUT_PROJECT" ]; then
@@ -61,7 +61,7 @@ jobs:
         uses: AlixANNERAUD/nanobom-action@5860bbf2b8b32a42d57f725c548f7be224c5fc03
         with:
           url: ${{ vars.NANOBOM_URL || 'https://vulnerabilities.xila.dev' }}
-          organization: ${{ vars.NANOBOM_ORGANIZATION || 'xila-project' }}
+          organization: ${{ vars.NANOBOM_ORGANIZATION || 'xila' }}
           token: ${{ secrets.NANOBOM_TOKEN }}
           project: ${{ steps.credentials.outputs.project }}
           scan-path: ${{ inputs.scan-path }}

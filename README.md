@@ -84,10 +84,10 @@ and manual `workflow_dispatch`. This per-repository model ensures evaluations ap
 directly in each repository's Actions runs and associate findings with the commit that
 introduced them.
 
-The workflow uses the organization Actions secret `NANOBOM_TOKEN` (configured with whole-organization
-upload-and-read permissions and visibility set to all repositories). It defaults to the instance URL
-`https://vulnerabilities.xila.dev` and the organization slug `xila-project`. These can be overridden
-via organization or repository Actions variables:
+Set the repository Actions secret `NANOBOM_TOKEN` in each caller repository to its project's
+Nanobom upload token. The workflow defaults to the instance URL `https://vulnerabilities.xila.dev`
+and the organization slug `xila`. Organization or repository Actions variables can override
+these settings:
 
 - `NANOBOM_URL`: overrides the Nanobom instance URL.
 - `NANOBOM_ORGANIZATION`: overrides the organization slug.
