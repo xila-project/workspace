@@ -61,7 +61,7 @@ jobs:
         uses: AlixANNERAUD/nanobom-action@5860bbf2b8b32a42d57f725c548f7be224c5fc03
         with:
           url: ${{ vars.NANOBOM_URL || 'https://vulnerabilities.xila.dev' }}
-          organization: ${{ vars.NANOBOM_ORGANIZATION || 'xila-project' }}
+          organization: ${{ vars.NANOBOM_ORGANIZATION || 'xila' }}
           token: ${{ secrets.NANOBOM_TOKEN }}
           project: ${{ steps.credentials.outputs.project }}
           scan-path: ${{ inputs.scan-path }}
