@@ -29,7 +29,6 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    needs: quality
     env:
       CARGO_TERM_COLOR: always
       CARGO_TARGET_DIR: ${{ github.workspace }}/target
@@ -48,9 +47,7 @@ jobs:
         run: mise run ci:packages-integration
       - name: "Setup | Locked Node dependencies via mise"
         run: mise run ci:node-dependencies
-      - name: "Validate | Cross-repository Cargo graph"
-        run: mise run integration:metadata
-      - name: "Test | Cross-repository integration"
+      - name: "Test | Cross-repository Cargo graph and builds"
         run: mise run integration:check
 
   required:
