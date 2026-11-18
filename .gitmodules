@@ -38,3 +38,7 @@
 	path = repositories/media
 	url = https://github.com/xila-project/media.git
 	branch = main
+[submodule "repositories/tools"]
+	path = repositories/tools
+	url = https://github.com/xila-project/tools.git
+	branch = main
