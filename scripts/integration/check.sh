@@ -86,7 +86,8 @@ PY
 if [[ "$mode" == "check" ]]; then
   (
     cd "$platforms"
-    cargo check --config "$patch" -p xila-native-example
+    # xila-fs-image builds images with the tools library.
+    cargo check --config "$patch" -p xila-native-example -p xila-fs-image
   )
   (
     cd "$applications"
