@@ -6,6 +6,7 @@ workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 platforms="$workspace_root/repositories/platforms"
 applications="$workspace_root/repositories/applications"
 core="$workspace_root/repositories/core"
+tools="$workspace_root/repositories/tools"
 
 for repository in "$platforms" "$applications" "$core"; do
   if [[ ! -f "$repository/Cargo.toml" ]]; then
@@ -46,8 +47,20 @@ restore() {
 }
 trap restore EXIT
 patch="$workdir/xila-local.toml"
+# Platforms revisions that build images with the tools library also patch it
+# to the local checkout; older revisions do not know the option.
+tools_override=()
+if grep -q -- '"--tools"' "$platforms/tools/dev/local_overrides.py"; then
+  if [[ ! -f "$tools/Cargo.toml" ]]; then
+    echo "Missing initialized submodule: $tools" >&2
+    echo "Run: mise run repositories:initialize-runtime" >&2
+    exit 1
+  fi
+  tools_override=(--tools "$tools")
+fi
 python3 "$platforms/tools/dev/local_overrides.py" \
-  --core "$core" --platforms "$platforms" --applications "$applications" --output "$patch"
+  --core "$core" --platforms "$platforms" --applications "$applications" \
+  "${tools_override[@]}" --output "$patch"
 
 (
   cd "$platforms"

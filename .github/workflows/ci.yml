@@ -38,7 +38,7 @@ jobs:
         with:
           persist-credentials: false
       - name: "Setup | Initialize pinned source repositories"
-        run: git submodule update --init --recursive -- repositories/core repositories/platforms repositories/applications repositories/package_manager repositories/registry
+        run: git submodule update --init --recursive -- repositories/core repositories/platforms repositories/applications repositories/package_manager repositories/registry repositories/tools
       - name: "Setup | Rust toolchain and build cache"
         uses: ./.github/actions/setup-rust
         with:
