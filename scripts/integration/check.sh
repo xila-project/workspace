@@ -15,6 +15,17 @@ for repository in "$platforms" "$applications" "$core"; do
   fi
 done
 
+# Pick the Cargo front end the way the mise `[wrappers.cargo]` does: mr-boxington
+# when XILA_MBX=1 (set by the setup-rust action when the cache is enabled), plain
+# Cargo otherwise, so the build cache applies to every command below.
+cargo() {
+  if [[ "${XILA_MBX:-0}" == "1" ]]; then
+    MBX_CARGO_SHIM_MODE=1 command mbx "$@"
+  else
+    command cargo "$@"
+  fi
+}
+
 mode="${1:-metadata}"
 if [[ "$mode" != "metadata" && "$mode" != "check" ]]; then
   echo "Usage: $0 [metadata|check]" >&2

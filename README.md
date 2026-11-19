@@ -67,10 +67,11 @@ validating compatibility. Updating a submodule does not push to that repository.
   `platforms/tools/dev/local_overrides.py` to patch Cargo dependencies to
   locally checked-out sources.
 
-The integration job initially disables the mr-boxington cache because it runs
-raw Cargo commands from a shell script; enabling it before these commands use
-the mise Cargo wrapper would create an ineffective cache. The shared action
-does support it for consumer workflows whose Cargo tasks run through mise.
+The integration job enables the mr-boxington cache (its own cache generation,
+`v1-workspace-integration`). `scripts/integration/check.sh` runs Cargo from a
+shell script, so it selects `mbx` when `XILA_MBX=1` (set by the shared action)
+and plain `cargo` otherwise, like the mise Cargo wrapper. Caches are saved from
+pushes to `main` and restored by pull requests.
 
 Default issue and PR templates are stored in the separate organization-wide
 `xila-project/.github` repository. Do not duplicate them here.
