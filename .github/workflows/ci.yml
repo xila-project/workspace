@@ -42,7 +42,10 @@ jobs:
       - name: "Setup | Rust toolchain and build cache"
         uses: ./.github/actions/setup-rust
         with:
-          cache-mode: target
+          # objects: the save step exports mbx's object store and needs no Cargo
+          # workspace at the repository root, which has none; target mode would
+          # run `cargo metadata` there and fail the job.
+          cache-mode: objects
           cache-generation: v1-workspace-integration
       - name: "Setup | Native build dependencies via mise"
         run: mise run ci:packages-integration
