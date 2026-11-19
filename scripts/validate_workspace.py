@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED = {"core", "platforms", "applications", "package_manager", "registry"}
+REQUIRED = {"core", "platforms", "applications", "package_manager", "registry", "tools"}
 
 
 def main() -> int:
