@@ -30,6 +30,14 @@
 	path = repositories/wasm_application_template
 	url = https://github.com/xila-project/wasm_application_template.git
 	branch = main
+[submodule "repositories/native_c_application_template"]
+	path = repositories/native_c_application_template
+	url = https://github.com/xila-project/native_c_application_template.git
+	branch = main
+[submodule "repositories/native_rust_application_template"]
+	path = repositories/native_rust_application_template
+	url = https://github.com/xila-project/native_rust_application_template.git
+	branch = main
 [submodule "repositories/website"]
 	path = repositories/website
 	url = https://github.com/xila-project/website.git

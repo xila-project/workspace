@@ -4,7 +4,7 @@ This is the Xila **multi-repository workspace**: it orchestrates the public `xil
 
 Layout:
 
-- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `website`, `brand`, `wasm_application_template`, `.github`). Private and archived repositories are deliberately excluded.
+- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `website`, `brand`, `wasm_application_template`, `native_c_application_template`, `native_rust_application_template`, `.github`). Private and archived repositories are deliberately excluded.
 - `mise.toml`: workspace tasks. `mise/shared.toml`: version pins in `[vars]` and the Cargo wrapper; consumer repositories may include it from a pinned workspace revision, so treat its variables as a public interface.
 - `scripts/validate_workspace.py`: offline validation of `.gitmodules`, gitlinks and CI invariants.
 - `scripts/integration/check.sh`: cross-repository Cargo graph resolution (`metadata`) and native/Wasm builds (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
