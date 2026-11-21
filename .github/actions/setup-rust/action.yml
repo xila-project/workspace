@@ -25,9 +25,27 @@ inputs:
     description: Cargo workspace containing the cached target directory
     required: false
     default: .
+  incremental-compilation:
+    description: >-
+      Let Cargo compile workspace crates incrementally. Off by default: the job
+      exports CARGO_INCREMENTAL=0, because continuous integration builds start
+      from a fresh or restored target directory, never from an earlier
+      incremental session.
+    required: false
+    default: "false"
 runs:
   using: composite
   steps:
+    # Continuous integration builds restore a cache instead of continuing an
+    # incremental session, so incremental data only grows the target directory,
+    # and compiler caches (mr-boxington, like sccache) cannot store or reuse
+    # incrementally compiled workspace crates. mr-boxington already turns
+    # incremental compilation off for the Cargo calls it wraps; this also covers
+    # Cargo calls that bypass it (cache disabled, XILA_MBX=0, or direct calls).
+    - name: "Setup | Disable incremental compilation"
+      if: ${{ inputs.incremental-compilation != 'true' }}
+      shell: bash
+      run: echo 'CARGO_INCREMENTAL=0' >> "$GITHUB_ENV"
     - name: "Setup | Activate mise"
       uses: jdx/mise-action@v5.2.2
     - name: "Setup | Pinned Rust toolchain"
