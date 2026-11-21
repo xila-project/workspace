@@ -29,7 +29,8 @@ inputs:
     description: >-
       Let Cargo compile workspace crates incrementally. Off by default: the job
       exports CARGO_INCREMENTAL=0, because continuous integration builds start
-      from a restored cache rather than an earlier incremental session.
+      from a fresh or restored target directory, never from an earlier
+      incremental session.
     required: false
     default: "false"
 runs:
