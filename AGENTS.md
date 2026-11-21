@@ -4,10 +4,10 @@ This is the Xila **multi-repository workspace**: it orchestrates the public `xil
 
 Layout:
 
-- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `website`, `brand`, `wasm_application_template`, `native_c_application_template`, `native_rust_application_template`, `.github`). Private and archived repositories are deliberately excluded.
+- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `tools`, `website`, `brand`, `wasm_application_template`, `native_c_application_template`, `native_rust_application_template`, `.github`). Private and archived repositories are deliberately excluded.
 - `mise.toml`: workspace tasks. `mise/shared.toml`: version pins in `[vars]` and the Cargo wrapper; consumer repositories may include it from a pinned workspace revision, so treat its variables as a public interface.
 - `scripts/validate_workspace.py`: offline validation of `.gitmodules`, gitlinks and CI invariants.
-- `scripts/integration/check.sh`: cross-repository Cargo graph resolution (`metadata`) and native/Wasm builds (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
+- `scripts/integration/check.sh`: cross-repository Cargo graph resolution of Platforms and `tools` (`metadata`) and native/Wasm builds, including the `xila` command line (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
 - `.github/workflows/ci.yml`: the workspace's own gate (quality → integration → `required`).
 - `.github/workflows/quality.yml`: reusable `workflow_call` workflow for consumer repositories; it calls `ci:format-rust`, `ci:format-toml` and `ci:lint-workflows`, which the **caller** must define, plus the optional `extra-task` input (a caller task such as `ci:quality-extra`). Consumers must pin it to a commit on workspace `main`: Actions cannot load a reusable workflow from a commit that is only on a deleted branch.
 - `.github/actions/setup-rust/`, `.github/actions/setup-node/`: reusable composite actions for consumer repositories.
@@ -21,21 +21,24 @@ Layout:
 | `platforms` | Platform drivers, per-platform examples and the seeded filesystem image; it is the integration point that assembles everything. |
 | `package_manager` | Single source of truth for package build, manifest, signing, verification and registry logic: `no_std` libraries, reusable packaging workflows and the desktop `xila-package` CLI, which should expose every such feature. |
 | `registry` | Package registry (metadata only, like `crates.io-index`): per-version registry entries generated from signed archives, which stay in each project's releases, plus the published developer keys; signed by the repository key. |
+| `tools` | The `xila` developer command line (Cargo package `xila-tools`): image building and packaging. It provides the file system image engine library (`xila-tools-image`), which Platforms links so that images match the firmware's Core, and `xila package`, which embeds `package_manager`'s command line. Image data (profiles, shortcuts, repositories) stays in Platforms. |
 
 ## Dependency direction
 
 `A ← B` means B depends on A.
 
 ```
-core            ← applications, platforms
-package_manager ← applications, platforms
+core            ← applications, platforms, tools
+package_manager ← applications, platforms, tools
 applications    ← platforms
+tools           ← platforms
 platforms       ← core, applications (dev-dependencies only, for tests)
 ```
 
 - `core` must not depend on another Xila repository, except Platforms test drivers as dev-dependencies. Known exception to remove later: the standalone CI probe `core/tools/verification_probe` (outside the Core Cargo workspace) pins `package_manager`'s verification crate; it belongs in `package_manager`.
 - Cross-repository Cargo git dependencies use `branch = "main"`, never `rev` or `tag`; `Cargo.lock` holds the exact commit, CI builds with `--locked`, and repinning is `cargo update -p <crate>`. Every repository must use the same reference so Cargo unifies Core, Applications and package_manager instead of resolving duplicate copies. Workflows that check out a matching repository read the locked commit (`tools/ci/locked_revision.py`) instead of hard-coding it. Release tags may switch back to immutable revisions.
 - `package_manager` is a leaf: it must not depend on any Xila repository, so every consumer can reuse its verification code without cycles.
+- `tools` depends on Core and `package_manager` only, never on Platforms or Applications (Platforms consumes it).
 - Put new signing, verification, manifest or registry logic in `package_manager` (library + CLI), not in scripts in other repositories.
 
 ## Package trust model
@@ -62,7 +65,7 @@ All task names use `<namespace>:<command>`. Tasks declare their own tools, so ru
 
 - **Ownership boundary.** The workspace owns orchestration, shared CI tooling and integration checks only. Firmware, filesystem images, Wasm demos, package content, app sources, issue/PR templates (in `xila-project/.github`) and the native package list (in Platforms' `mise.ci.toml`) belong to their own repositories. Do not duplicate them here; delegate instead.
 - **Native packages.** Never add `apt-get` to workflows or a `[bootstrap] packages` table to `mise/shared.toml`. `ci:packages-integration` must keep delegating to `cd repositories/platforms && mise -E ci run ci:packages-host`. `validate_workspace.py` enforces this and also checks that the pinned Platforms revision still provides that task and the required packages.
-- **Submodule rules** (enforced by `validate_workspace.py`): each path is `repositories/<name>`, its URL is exactly `https://github.com/xila-project/<name>.git`, it tracks `branch = main`, and `.gitmodules` and the tracked gitlinks match one-to-one. `core`, `platforms`, `applications`, `package_manager` and `registry` are required for integration. When adding or removing a repository, update `.gitmodules`, the gitlink, `REQUIRED` in the validator (if relevant), `repositories:initialize-runtime`, the CI checkout step and the README together.
+- **Submodule rules** (enforced by `validate_workspace.py`): each path is `repositories/<name>`, its URL is exactly `https://github.com/xila-project/<name>.git`, it tracks `branch = main`, and `.gitmodules` and the tracked gitlinks match one-to-one. `core`, `platforms`, `applications`, `package_manager`, `registry` and `tools` are required for integration. When adding or removing a repository, update `.gitmodules`, the gitlink, `REQUIRED` in the validator (if relevant), `repositories:initialize-runtime`, the CI checkout step and the README together.
 - **Pinned, not floating.** CI validates the specific committed gitlink combination. Updating submodules only moves the local checkout; the gitlink change must be reviewed and committed in this repository. Never push to a submodule's remote as a side effect of workspace work.
 - **Do not repin to unmerged commits.** A gitlink on `main` must point to a commit reachable from that submodule's `main`. Temporary pins to PR branches are acceptable only in a draft PR and must be repinned to the merged SHA before merge.
 - **Versions.** Tool versions live in `[vars]` in `mise/shared.toml` and are referenced as `{{ vars.<name> }}`; do not hard-code versions in tasks or workflows. Pin GitHub Actions to explicit versions, and tell consumers to reference workspace actions and workflows by full commit SHA.

@@ -6,8 +6,9 @@ workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 platforms="$workspace_root/repositories/platforms"
 applications="$workspace_root/repositories/applications"
 core="$workspace_root/repositories/core"
+tools="$workspace_root/repositories/tools"
 
-for repository in "$platforms" "$applications" "$core"; do
+for repository in "$platforms" "$applications" "$core" "$tools"; do
   if [[ ! -f "$repository/Cargo.toml" ]]; then
     echo "Missing initialized submodule: $repository" >&2
     echo "Run: mise run repositories:initialize-runtime" >&2
@@ -35,11 +36,11 @@ fi
 workdir="$(mktemp -d)"
 # Local source patches make Cargo rewrite each checkout's lockfile; restore
 # them so an integration run never leaves the submodules modified.
-for repository in "$platforms" "$applications"; do
+for repository in "$platforms" "$applications" "$tools"; do
   cp "$repository/Cargo.lock" "$workdir/$(basename "$repository").Cargo.lock"
 done
 restore() {
-  for repository in "$platforms" "$applications"; do
+  for repository in "$platforms" "$applications" "$tools"; do
     cp "$workdir/$(basename "$repository").Cargo.lock" "$repository/Cargo.lock"
   done
   rm -rf "$workdir"
@@ -47,13 +48,17 @@ restore() {
 trap restore EXIT
 patch="$workdir/xila-local.toml"
 python3 "$platforms/tools/dev/local_overrides.py" \
-  --core "$core" --platforms "$platforms" --applications "$applications" --output "$patch"
+  --core "$core" --platforms "$platforms" --applications "$applications" \
+  --tools "$tools" --output "$patch"
 
-(
-  cd "$platforms"
-  cargo metadata --config "$patch" --format-version 1 > "$workdir/metadata.json"
-)
-python3 - "$workdir/metadata.json" <<'PY'
+# Platforms assembles every other repository; the tools workspace also builds
+# the `xila` command line, which Platforms does not link.
+for repository in "$platforms" "$tools"; do
+  (
+    cd "$repository"
+    cargo metadata --config "$patch" --format-version 1 > "$workdir/metadata.json"
+  )
+  python3 - "$workdir/metadata.json" "$(basename "$repository")" <<'PY'
 import collections
 import json
 import sys
@@ -66,14 +71,20 @@ for package in metadata["packages"]:
         sources[package["name"]].add(package["id"])
 duplicates = {name: ids for name, ids in sources.items() if len(ids) > 1}
 if duplicates:
-    raise SystemExit("Duplicate Xila package identities: " + repr(duplicates))
-print("Cargo dependency graph resolves without duplicate Xila package identities")
+    raise SystemExit(sys.argv[2] + ": duplicate Xila package identities: " + repr(duplicates))
+print(sys.argv[2] + ": Cargo dependency graph resolves without duplicate Xila package identities")
 PY
+done
 
 if [[ "$mode" == "check" ]]; then
   (
     cd "$platforms"
-    cargo check --config "$patch" -p xila-native-example
+    # xila-fs-image builds images with the tools library.
+    cargo check --config "$patch" -p xila-native-example -p xila-fs-image
+  )
+  (
+    cd "$tools"
+    cargo check --config "$patch" --workspace
   )
   (
     cd "$applications"
