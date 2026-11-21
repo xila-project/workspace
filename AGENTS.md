@@ -7,7 +7,7 @@ Layout:
 - `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `tools`, `website`, `brand`, `wasm_application_template`, `native_c_application_template`, `native_rust_application_template`, `.github`). Private and archived repositories are deliberately excluded.
 - `mise.toml`: workspace tasks. `mise/shared.toml`: version pins in `[vars]` and the Cargo wrapper; consumer repositories may include it from a pinned workspace revision, so treat its variables as a public interface.
 - `scripts/validate_workspace.py`: offline validation of `.gitmodules`, gitlinks and CI invariants.
-- `scripts/integration/check.sh`: cross-repository Cargo graph resolution (`metadata`) and native/Wasm builds (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
+- `scripts/integration/check.sh`: cross-repository Cargo graph resolution of Platforms and `tools` (`metadata`) and native/Wasm builds, including the `xila` command line (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
 - `.github/workflows/ci.yml`: the workspace's own gate (quality → integration → `required`).
 - `.github/workflows/quality.yml`: reusable `workflow_call` workflow for consumer repositories; it calls `ci:format-rust`, `ci:format-toml` and `ci:lint-workflows`, which the **caller** must define, plus the optional `extra-task` input (a caller task such as `ci:quality-extra`). Consumers must pin it to a commit on workspace `main`: Actions cannot load a reusable workflow from a commit that is only on a deleted branch.
 - `.github/actions/setup-rust/`, `.github/actions/setup-node/`: reusable composite actions for consumer repositories.
@@ -21,7 +21,7 @@ Layout:
 | `platforms` | Platform drivers, per-platform examples and the seeded filesystem image; it is the integration point that assembles everything. |
 | `package_manager` | Single source of truth for package build, manifest, signing, verification and registry logic: `no_std` libraries, reusable packaging workflows and the desktop `xila-package` CLI, which should expose every such feature. |
 | `registry` | Package registry (metadata only, like `crates.io-index`): per-version registry entries generated from signed archives, which stay in each project's releases, plus the published developer keys; signed by the repository key. |
-| `tools` | Developer tools behind the `xila` command line (Cargo package `xila-tools`): the file system image engine library (`xila-tools-image`), which Platforms links so that images match the firmware's Core, and `xila package`, which embeds `package_manager`'s command line. Image data (profiles, shortcuts, repositories) stays in Platforms. |
+| `tools` | The `xila` developer command line (Cargo package `xila-tools`): image building and packaging. It provides the file system image engine library (`xila-tools-image`), which Platforms links so that images match the firmware's Core, and `xila package`, which embeds `package_manager`'s command line. Image data (profiles, shortcuts, repositories) stays in Platforms. |
 
 ## Dependency direction
 
