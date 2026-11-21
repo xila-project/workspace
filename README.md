@@ -55,7 +55,9 @@ validating compatibility. Updating a submodule does not push to that repository.
 
 - `.github/actions/setup-rust/`: reusable composite action for mise, pinned
   Rust toolchain and opt-in mr-boxington cache; the caller decides its cache
-  generation/mode and retains its own `mise.ci.toml` tasks.
+  generation/mode and retains its own `mise.ci.toml` tasks. It exports
+  `CARGO_INCREMENTAL=0` for the rest of the job (input
+  `incremental-compilation: "true"` keeps Cargo's profile defaults instead).
 - `.github/workflows/quality.yml`: reusable formatting/actionlint workflow for
   Xila repositories, to be adopted as consumers are migrated.
 - `.github/workflows/ci.yml`: workspace-only integration gate using pinned
