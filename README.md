@@ -164,8 +164,10 @@ Download the candidate promptly, while the underlying CI artifacts are still
 available. The workflow defaults to candidate validation. Select **Publish**
 to publish after validation. Configure `XILA_RELEASE_TOKEN` in the
 `xila-release` environment with Contents write access to workspace, Core,
-Platforms and Tools. The release job uploads and verifies every asset on a
-Platforms draft before creating tags. It then publishes the draft and includes
+Platforms and Tools. Protect that environment with a required reviewer and
+restrict its deployment branches to `main`. The release job uploads and
+verifies every asset on a Platforms draft before creating tags. It then
+publishes the draft and includes
 GitHub-generated notes for all four repositories. If tagging is interrupted,
 rerun the failed publish job so the same candidate can be verified
 before it finishes.

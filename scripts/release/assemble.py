@@ -70,11 +70,11 @@ def collect_downloads(revisions, version, output):
         download(PLATFORMS, platforms_run, "xila-native-linux-x86_64", native)
         binary = native / "native_example"
         binary.chmod(0o755)
-        for board in ("nano-33-ble", "esp32s3", "esp32c6"):
-            download(PLATFORMS, platforms_run, f"xila-{board}", output)
-            expected = output / (f"{board}.bin" if board == "nano-33-ble" else f"{board}-flash.bin")
-            if not expected.is_file():
-                raise ValueError(f"missing {expected.name} in the Platforms CI artifact")
+        # Only device firmware is released. The Espressif CI images are built
+        # with QEMU-only features (virtual display, no entropy source).
+        download(PLATFORMS, platforms_run, "xila-nano-33-ble", output)
+        if not (output / "nano-33-ble.bin").is_file():
+            raise ValueError("missing nano-33-ble.bin in the Platforms CI artifact")
 
         browser_run = find_run(PLATFORMS, "demo.yml", "workflow_run", revisions["platforms"])
         download(PLATFORMS, browser_run, "xila-native-seed", native)
