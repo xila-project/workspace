@@ -53,7 +53,7 @@ def archive(source, destination, name):
         member.uname = member.gname = ""
         return member
 
-    with destination.open("wb") as output, gzip.GzipFile(fileobj=output, mtime=0) as compressed:
+    with destination.open("wb") as output, gzip.GzipFile(fileobj=output, mode="wb", mtime=0) as compressed:
         with tarfile.open(fileobj=compressed, mode="w") as package:
             package.add(source, arcname=name, filter=normalize)
 
