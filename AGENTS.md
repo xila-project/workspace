@@ -36,7 +36,7 @@ platforms       ← core, applications (dev-dependencies only, for tests)
 ```
 
 - `core` must not depend on another Xila repository, except Platforms test drivers as dev-dependencies. Known exception to remove later: the standalone CI probe `core/tools/verification_probe` (outside the Core Cargo workspace) pins `package_manager`'s verification crate; it belongs in `package_manager`.
-- Cross-repository Cargo git dependencies use `branch = "main"`, never `rev` or `tag`; `Cargo.lock` holds the exact commit, CI builds with `--locked`, and repinning is `cargo update -p <crate>`. Every repository must use the same reference so Cargo unifies Core, Applications and package_manager instead of resolving duplicate copies. Workflows that check out a matching repository read the locked commit (`tools/ci/locked_revision.py`) instead of hard-coding it. Release tags may switch back to immutable revisions.
+- Cross-repository Cargo git dependencies use `branch = "main"`, never `rev` or `tag`; `Cargo.lock` holds the exact commit, CI builds with `--locked`, and repinning is `cargo update -p <crate>`. Every repository must use the same reference so Cargo unifies Core, Applications and package_manager instead of resolving duplicate copies. Workflows that check out a matching repository read the locked commit (`tools/ci/locked_revision.py`) instead of hard-coding it.
 - `package_manager` is a leaf: it must not depend on any Xila repository, so every consumer can reuse its verification code without cycles.
 - `tools` depends on Core and `package_manager` only, never on Platforms or Applications (Platforms consumes it).
 - Put new signing, verification, manifest or registry logic in `package_manager` (library + CLI), not in scripts in other repositories.
@@ -81,3 +81,19 @@ All task names use `<namespace>:<command>`. Tasks declare their own tools, so ru
 - After editing workflows, `.gitmodules`, `mise.toml` or `mise/shared.toml`, run `mise run workspace:validate` and `mise run ci:lint-workflows`. After changing integration scripts or repinning runtime submodules, run at least `mise run integration:metadata`, and `integration:check` when feasible; report what was actually run.
 - Make changes to submodule code in the submodule's own repository and through its own PR, following its `AGENTS.md`; the workspace only records the resulting gitlink.
 - Do not reintroduce a Docker development image; the workspace is native mise only.
+
+## Releases
+
+Core, Platforms and Tools share the Xila version in their Cargo workspace
+manifests. Before 1.0, a breaking change bumps the minor version and compatible
+changes bump the patch. Review version bumps and changelog changes in release
+pull requests. Record the merged commits in the workspace release pull request.
+Keep dependencies on `main` and align each `Cargo.lock` with the workspace
+gitlinks.
+
+The workspace and all three repositories use `vX.Y.Z` on the selected commits.
+Platforms hosts the release downloads, checksums and notes. Applications and
+package_manager use independent versions and tags. Only the application SDK,
+Tools and package_manager are intended for crates.io.
+
+See [the Xila release policy](https://github.com/xila-project/core/issues/276).

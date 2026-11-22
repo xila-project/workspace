@@ -23,6 +23,8 @@ jobs:
         run: python3 scripts/validate_workspace.py
       - name: "Setup | Activate mise"
         uses: jdx/mise-action@v5.2.2
+      - name: "Test | Release policy checks"
+        run: mise run release:test
       - name: "Lint | GitHub Actions"
         run: mise run ci:lint-workflows
 
@@ -47,6 +49,8 @@ jobs:
           # run `cargo metadata` there and fail the job.
           cache-mode: objects
           cache-generation: v1-workspace-integration
+      - name: "Validate | Xila workspace versions"
+        run: mise run release:version
       - name: "Setup | Native build dependencies via mise"
         run: mise run ci:packages-integration
       - name: "Setup | Locked Node dependencies via mise"
