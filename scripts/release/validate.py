@@ -40,6 +40,19 @@ def check_versions(repositories, tag=None):
             "workspace": True
         }:
             raise ValueError("xila-version must inherit Core's workspace version")
+    for package_name, relative_path in (
+        ("xila-sys", "core/libraries/abi/application/sdk/rust/xila-sys/Cargo.toml"),
+        ("xila-wasm", "applications/executables/wasm/Cargo.toml"),
+    ):
+        package_manifest = repositories / relative_path
+        if package_manifest.exists() or tag is not None:
+            if not package_manifest.exists():
+                raise ValueError(f"{package_name} manifest is missing")
+            package_version = read_toml(package_manifest)["package"]["version"]
+            if package_version != version:
+                raise ValueError(
+                    f"{package_name} version {package_version} differs from Core {version}"
+                )
     if tag is not None and tag != f"v{version}":
         raise ValueError(f"expected release tag v{version}, found {tag}")
     return version

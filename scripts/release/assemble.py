@@ -34,7 +34,10 @@ def find_run(repository, workflow, event, revision):
     else:
         arguments += ["--commit", revision]
     for run in json.loads(github(*arguments)):
-        if event == "workflow_run" and run["displayTitle"] != f"Browser demonstrations for {revision}":
+        if event == "workflow_run":
+            if run["displayTitle"] != f"Browser demonstrations for {revision}":
+                continue
+        elif run["headSha"] != revision:
             continue
         return str(run["databaseId"])
     raise ValueError(f"no successful {repository}/{workflow} run for {revision}")
@@ -58,7 +61,8 @@ def archive(source, destination, name):
             package.add(source, arcname=name, filter=normalize)
 
 
-def collect_downloads(revisions, output):
+def collect_downloads(revisions, version, output):
+    major_minor = ".".join(version.split(".")[:2])
     with tempfile.TemporaryDirectory() as temporary:
         staging = Path(temporary)
         platforms_run = find_run(PLATFORMS, "ci.yml", "push", revisions["platforms"])
@@ -90,10 +94,18 @@ def collect_downloads(revisions, output):
         for target in SDK_TARGETS:
             sdk = staging / target
             download(core, core_run, f"xila-sdk-{target}", sdk)
+            expected_name = f"xila-sdk-{major_minor}-{target}.tar.zst"
             archives = list(sdk.glob("xila-sdk-*.tar.zst"))
-            if len(archives) != 1 or (output / archives[0].name).exists():
-                raise ValueError(f"expected one unique SDK archive for {target}")
-            shutil.copyfile(archives[0], output / archives[0].name)
+            if len(archives) != 1 or archives[0].name != expected_name or (output / expected_name).exists():
+                raise ValueError(f"expected one unique {expected_name} archive for {target}")
+            shutil.copyfile(archives[0], output / expected_name)
+
+
+def verify_main_ancestry(root, revisions):
+    for repository, revision in revisions.items():
+        directory = root if repository == "workspace" else root / "repositories" / repository
+        git(directory, "fetch", "--no-tags", "origin", "main")
+        git(directory, "merge-base", "--is-ancestor", revision, "FETCH_HEAD")
 
 
 def release_notes(root, revisions, tag, previous_tag):
@@ -101,8 +113,6 @@ def release_notes(root, revisions, tag, previous_tag):
     for repository in ("workspace", *LOCKSTEP):
         directory = root if repository == "workspace" else root / "repositories" / repository
         revision = revisions[repository]
-        git(directory, "fetch", "--no-tags", "origin", "main")
-        git(directory, "merge-base", "--is-ancestor", revision, "FETCH_HEAD")
         remote = f"https://github.com/xila-project/{repository}"
         if previous_tag:
             git(directory, "fetch", "--no-tags", "origin", f"refs/tags/{previous_tag}")
@@ -131,11 +141,12 @@ def main():
             tags = git(ROOT, "tag", "--list", "v*").splitlines()
             if any(re.fullmatch(f"v{VERSION}", existing) and existing != tag for existing in tags):
                 raise ValueError("set the previous Xila tag when preparing a later release")
-        check_versions(ROOT / "repositories", tag)
+        version = check_versions(ROOT / "repositories", tag)
         revisions = {"workspace": git(ROOT, "rev-parse", "HEAD"), **check_candidate(ROOT)}
+        verify_main_ancestry(ROOT, revisions)
         notes = release_notes(ROOT, revisions, tag, previous_tag)
         output.mkdir(parents=True)
-        collect_downloads(revisions, output)
+        collect_downloads(revisions, version, output)
         (output / "RELEASE_NOTES.md").write_text(notes)
         (output / "revisions.json").write_text(json.dumps(revisions, indent=2) + "\n")
         checksums = []
