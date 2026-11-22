@@ -7,8 +7,9 @@ platforms="$workspace_root/repositories/platforms"
 applications="$workspace_root/repositories/applications"
 core="$workspace_root/repositories/core"
 tools="$workspace_root/repositories/tools"
+package_manager="$workspace_root/repositories/package_manager"
 
-for repository in "$platforms" "$applications" "$core" "$tools"; do
+for repository in "$platforms" "$applications" "$core" "$tools" "$package_manager"; do
   if [[ ! -f "$repository/Cargo.toml" ]]; then
     echo "Missing initialized submodule: $repository" >&2
     echo "Run: mise run repositories:initialize-runtime" >&2
@@ -49,7 +50,7 @@ trap restore EXIT
 patch="$workdir/xila-local.toml"
 python3 "$platforms/tools/dev/local_overrides.py" \
   --core "$core" --platforms "$platforms" --applications "$applications" \
-  --tools "$tools" --output "$patch"
+  --tools "$tools" --package-manager "$package_manager" --output "$patch"
 
 # Platforms assembles every other repository; the tools workspace also builds
 # the `xila` command line, which Platforms does not link.
