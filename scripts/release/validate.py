@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 LOCKSTEP = ("core", "platforms", "tools")
 VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
 SOURCE = re.compile(
-    r"git\+https://github\.com/xila-project/([a-z_]+)(?:\.git)?\?([^#]+)#([0-9a-f]{40})",
+    r"git\+https://github\.com/xila-project/([a-z_]+)(?:\.git)?(?:\?([^#]+))?#([0-9a-f]{40})",
     re.IGNORECASE,
 )
 

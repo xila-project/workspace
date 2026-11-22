@@ -54,3 +54,13 @@ class ReleaseValidationTests(unittest.TestCase):
         check_lockfile(lockfile, {"core": revision})
         with self.assertRaisesRegex(ValueError, "tools.*core"):
             check_lockfile(lockfile, {"core": "b" * 40})
+
+    def test_rejects_implicit_git_branch(self):
+        lockfile = self.repositories / "tools/Cargo.lock"
+        revision = "a" * 40
+        lockfile.write_text(
+            f'[[package]]\nname = "xila"\n'
+            f'source = "git+https://github.com/xila-project/core#{revision}"\n'
+        )
+        with self.assertRaisesRegex(ValueError, "must track core main"):
+            check_lockfile(lockfile, {"core": revision})
