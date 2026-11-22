@@ -50,3 +50,7 @@
 	path = repositories/tools
 	url = https://github.com/xila-project/tools.git
 	branch = main
+[submodule "repositories/package-action"]
+	path = repositories/package-action
+	url = https://github.com/xila-project/package-action.git
+	branch = main
