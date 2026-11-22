@@ -144,6 +144,34 @@ merge this workspace PR while its `repositories/platforms` gitlink points to
 an unmerged PR commit; after Platforms #37 merges, repin that gitlink to the
 final `platforms/main` SHA and rerun the workspace integration gate.
 
+## Preparing a Xila release candidate
+
+Open reviewable pull requests for the shared version and changelog changes.
+Once the selected commits are on their respective `main` branches, open a
+workspace pull request for the matching gitlinks. Keep the exact revisions in
+the Cargo lockfiles. The first release already has version `0.1.0`.
+
+After the workspace pull request merges, run **Xila release** from
+workspace `main` with the proposed `vX.Y.Z` tag and the preceding Xila tag.
+Leave the preceding tag empty for the first release. The workflow checks
+versions and lockfiles, runs integration checks and assembles downloads from
+successful Core and Platforms CI runs for the pinned commits. It uploads one
+Actions artifact containing the downloads, checksums, revisions and notes. If
+cross-repository Actions artifact access requires a separate token, configure
+`XILA_ARTIFACTS_READ_TOKEN` with read access to Actions in Core and Platforms.
+
+Download the candidate promptly, while the underlying CI artifacts are still
+available. The workflow defaults to candidate validation. Select **Publish**
+to publish after validation. Configure `XILA_RELEASE_TOKEN` in the
+`xila-release` environment with Contents write access to workspace, Core,
+Platforms and Tools. Protect that environment with a required reviewer and
+restrict its deployment branches to `main`. The release job uploads and
+verifies every asset on a Platforms draft before creating tags. It then
+publishes the draft and includes
+GitHub-generated notes for all four repositories. If tagging is interrupted,
+rerun the failed publish job so the same candidate can be verified
+before it finishes.
+
 <!-- xila:footer:start -->
 
 ---

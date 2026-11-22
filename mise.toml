@@ -50,6 +50,14 @@ npm ci --prefix repositories/platforms
 npm ci --prefix repositories/applications
 """
 
+[tasks."release:version"]
+description = "Compare the Core, Platforms and Tools workspace versions"
+run = "python3 scripts/release/validate.py"
+
+[tasks."release:test"]
+description = "Test release candidate validation"
+run = "python3 -m unittest discover -s scripts/release -v"
+
 [tasks."integration:metadata"]
 description = "Resolve the Xila multi-repository Cargo graph with local source patches"
 tools.rust = { version = "{{ vars.rust_version }}", profile = "minimal" }
@@ -59,3 +67,15 @@ run = "bash scripts/integration/check.sh metadata"
 description = "Validate native and Wasm integration across pinned repositories"
 tools.rust = { version = "{{ vars.rust_version }}", profile = "minimal", components = ["rustfmt"], targets = ["wasm32-wasip1", "wasm32-unknown-unknown"] }
 run = "bash scripts/integration/check.sh check"
+
+[tasks."release:validate"]
+description = "Validate an exact release candidate against XILA_RELEASE_TAG"
+run = 'python3 scripts/release/validate.py --tag "${XILA_RELEASE_TAG:?set XILA_RELEASE_TAG}"'
+
+[tasks."release:assemble"]
+description = "Assemble release downloads from successful CI runs of the pinned commits"
+run = "python3 scripts/release/assemble.py"
+
+[tasks."release:publish"]
+description = "Publish a validated candidate to Platforms and create the matching tags"
+run = "python3 scripts/release/publish.py"

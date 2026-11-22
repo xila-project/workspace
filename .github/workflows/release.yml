@@ -1,0 +1,96 @@
+name: Xila release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Proposed Xila tag (vX.Y.Z)"
+        required: true
+        type: string
+      previous_tag:
+        description: "Previous Xila tag (empty for the first release)"
+        type: string
+
+      publish:
+        description: "Publish the validated candidate and create its tags"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xila-release
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    env:
+      XILA_RELEASE_TAG: ${{ inputs.tag }}
+      XILA_PREVIOUS_TAG: ${{ inputs.previous_tag }}
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+      - name: "Setup | Checkout selected workspace commit and pinned repositories"
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.2
+      - name: "Validate | Release tag, versions and Git revisions"
+        run: mise run release:validate
+      - name: "Setup | Rust toolchain and build cache"
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-mode: objects
+          cache-generation: v1-workspace-release
+      - name: "Setup | Native build dependencies via mise"
+        run: mise run ci:packages-integration
+      - name: "Setup | Locked Node dependencies via mise"
+        run: mise run ci:node-dependencies
+      - name: "Test | Cross-repository Cargo graph and builds"
+        run: mise run integration:check
+      - name: "Build | Assemble candidate downloads and notes"
+        env:
+          GH_TOKEN: ${{ secrets.XILA_ARTIFACTS_READ_TOKEN || github.token }}
+        run: mise run release:assemble
+      - name: "Report | Upload validated release candidate"
+        uses: actions/upload-artifact@v7
+        with:
+          name: xila-release-candidate
+          path: target/release-candidate/
+          if-no-files-found: error
+
+  publish:
+    needs: candidate
+    if: github.ref == 'refs/heads/main' && needs.candidate.result == 'success' && inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    environment: xila-release
+    env:
+      XILA_RELEASE_TAG: ${{ inputs.tag }}
+      XILA_PREVIOUS_TAG: ${{ inputs.previous_tag }}
+    steps:
+      - name: "Setup | Checkout release tooling"
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.2
+      - name: "Setup | Download validated candidate"
+        uses: actions/download-artifact@v7
+        with:
+          name: xila-release-candidate
+          path: target/release-candidate/
+      - name: "Publish | Stage assets, tag and publish Platforms release"
+        env:
+          GH_TOKEN: ${{ secrets.XILA_RELEASE_TOKEN }}
+        run: mise run release:publish
