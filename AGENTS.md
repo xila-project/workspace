@@ -4,7 +4,7 @@ This is the Xila **multi-repository workspace**: it orchestrates the public `xil
 
 Layout:
 
-- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `tools`, `website`, `brand`, `wasm_application_template`, `native_c_application_template`, `native_rust_application_template`, `.github`). Private and archived repositories are deliberately excluded.
+- `repositories/<name>/`: Git submodules, one per active public repository (`core`, `platforms`, `applications`, `package_manager`, `registry`, `tools`, `website`, `brand`, `media`, `package-action`, `wasm_application_template`, `native_c_application_template`, `native_rust_application_template`, `.github`). Private and archived repositories are deliberately excluded.
 - `mise.toml`: workspace tasks. `mise/shared.toml`: version pins in `[vars]` and the Cargo wrapper; consumer repositories may include it from a pinned workspace revision, so treat its variables as a public interface.
 - `scripts/validate_workspace.py`: offline validation of `.gitmodules`, gitlinks and CI invariants.
 - `scripts/integration/check.sh`: cross-repository Cargo graph resolution of Platforms and `tools` (`metadata`) and native/Wasm builds, including the `xila` command line (`check`), using Platforms' `tools/dev/local_overrides.py` to patch Cargo dependencies to the local submodule sources.
@@ -46,6 +46,31 @@ platforms       ← core, applications (dev-dependencies only, for tests)
 - **Developer (publisher) key** signs each `.xpk` manifest and its SHA-256 file inventory.
 - **Repository key** signs registry entries (identifier, version, archive SHA-256 and size, authorized developer key) and the developer-key list in `registry`.
 - Devices trust the repository key; installation verifies repository key → developer key → package signature → file hashes. Keep the two keys separate, and never treat a developer key as a trust anchor.
+
+# Rules for every Xila repository
+
+These apply in the workspace and in every submodule. A submodule's own `AGENTS.md` adds rules for that repository; when the two disagree, the submodule's file wins for code inside it.
+
+| Repository | Instructions |
+|---|---|
+| `core` | [`repositories/core/AGENTS.md`](repositories/core/AGENTS.md) |
+| `platforms` | [`repositories/platforms/AGENTS.md`](repositories/platforms/AGENTS.md) |
+| `applications` | [`repositories/applications/AGENTS.md`](repositories/applications/AGENTS.md) |
+| `package_manager` | [`repositories/package_manager/AGENTS.md`](repositories/package_manager/AGENTS.md) |
+| `tools` | [`repositories/tools/AGENTS.md`](repositories/tools/AGENTS.md) |
+| `website` | [`repositories/website/AGENTS.md`](repositories/website/AGENTS.md) |
+| `brand` | [`repositories/brand/AGENTS.md`](repositories/brand/AGENTS.md) |
+| `media` | [`repositories/media/AGENTS.md`](repositories/media/AGENTS.md) |
+| `registry`, `package-action`, the application templates, `.github` | No file of their own: this file and their README apply |
+
+- **Language.** Plain English in code, comments, documentation, commit messages, pull requests and issues. Spell words out in identifiers and text (`device`, not `dev`; `directory`, not `dir`; `configuration`, not `config`) unless an external API or format imposes the short form.
+- **No tool attribution.** Commit messages, pull requests, issues, reviews, comments and documentation describe the change, never the tool or assistant that helped write it: no `Co-Authored-By` trailers for tools and no "Generated with" lines. Check `git log -1 --format=%B` after committing.
+- **Commits and pull requests.** Conventional commit titles (`feat(scope): …`, `fix: …`, `docs: …`). One pull request per repository and concern, against `main`, with green CI before merge; pull requests are squash-merged with the title as subject. State in the description what was run to verify the change.
+- **Cross-repository changes.** Land them upstream first, following the dependency direction above: Core and `package_manager`, then Applications and `tools`, then Platforms, then the workspace gitlinks. A downstream pull request stays a draft until the upstream one is merged, then relocks with `cargo update -p <crate>` and builds with `--locked`.
+- **Issues.** Track open work and follow-ups in issues of the repository that owns them. Keep an issue's state in its description (edit the body, tick task lists) rather than in status comments, and link related pull requests and issues.
+- **Compatibility.** Before 1.0, breaking changes are allowed: migrate or replace old formats and options instead of adding compatibility layers, and say so in the pull request. Never delete or rewrite published releases and tags.
+- **Secrets and privacy.** Never commit secrets, local paths, device serial numbers, network names or personal data. Scripts take secret values from files passed as arguments and never print them.
+- **Hardware.** Flashing and serial-port access to physical boards are done by the maintainer or a session they authorise, never by unattended automation.
 
 # Build & Test Commands
 
