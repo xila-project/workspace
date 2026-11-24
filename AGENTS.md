@@ -91,10 +91,10 @@ Every bug, feature, follow-up, upstream problem and design decision gets an issu
 
 **How.**
 
-- **Body structure:** Problem, Findings (measurements with dates and the setup they were taken on), Options with their tradeoffs, Decision and why, Status.
+- **Body structure:** issues filed through the forms of `xila-project/.github` already have their fields. For other issues, use these sections: Problem, Findings (measurements with dates and the setup they were taken on), Options with their tradeoffs, Decision and why, Status.
 - **State in the description:** keep the state in the description, not in comments. Edit the body, tick task lists and update the Status section. Fold useful comment content into the body.
 - **Links:** link related issues and pull requests both ways. Code that holds a workaround or a deliberate limitation names its issue in a comment.
-- **Paused or rejected work:** don't close or forget an issue for work that is paused or rejected. Mark it paused or close it as not planned, with the reason in the Status section, so that the decision can be found and challenged.
+- **Paused or rejected work:** never close or drop such an issue without a reason. Mark it paused, or close it as not planned. Write the reason in the Status section, so that the decision can be found and challenged.
 - **Before an optimisation or redesign:** search the issues of the repositories involved for earlier decisions on the same area. Then reopen or update those issues instead of starting over.
 
 # Build & Test Commands
