@@ -67,10 +67,35 @@ These apply in the workspace and in every submodule. A submodule's own `AGENTS.m
 - **No tool attribution.** Commit messages, pull requests, issues, reviews, comments and documentation describe the change, never the tool or assistant that helped write it: no `Co-Authored-By` trailers for tools and no "Generated with" lines. Check `git log -1 --format=%B` after committing.
 - **Commits and pull requests.** Conventional commit titles (`feat(scope): …`, `fix: …`, `docs: …`). One pull request per concern in each repository, against `main`, with green CI before merge; pull requests are squash-merged with the title as subject, unless the repository's own `AGENTS.md` defines another workflow (`media` commits directly to `main`). State in the description what was run to verify the change.
 - **Cross-repository changes.** Land them upstream first, following the dependency direction above: Core and `package_manager`, then Applications and `tools`, then Platforms, then the workspace gitlinks. A downstream pull request stays a draft until the upstream one is merged, then relocks the lockfile with `cargo update -p <crate>` and builds with `--locked`.
-- **Issues.** Track open work and follow-ups in issues of the repository that owns them. Keep an issue's state in its description (edit the body, tick task lists) rather than in status comments, and link related pull requests and issues.
+- **Issues.** Track all work in issues; see [Issue tracking](#issue-tracking).
 - **Compatibility.** Before 1.0, breaking changes are allowed: migrate or replace old formats and options instead of adding compatibility layers, and say so in the pull request. Never delete or rewrite published releases and tags.
 - **Secrets and privacy.** Never commit secrets, local paths, device serial numbers, network names or personal data. Scripts take secret values from files passed as arguments and never print them.
 - **Hardware.** Flashing and serial-port access to physical boards are done by the maintainer or a session they authorise, never by unattended automation.
+
+## Issue tracking
+
+Every bug, feature, follow-up, upstream problem and design decision gets an issue, even when it is fixed right away or deliberately left alone.
+
+**Why.** Pull requests record what changed, not what was considered and rejected. Issues keep the reasoning: measurements, the options weighed, the tradeoffs and the conditions under which a choice should change. They let anyone:
+
+- challenge a decision later, for example when an optimisation needs it, without measuring everything again;
+- find the workaround to remove when an upstream fix lands;
+- pick up paused work without the original context.
+
+**What to file.**
+
+- **Bugs and features:** in the repository that owns the code (see [Repository responsibilities](#repository-responsibilities)).
+- **Follow-ups:** for review findings, deferred scope and known limitations left by a pull request, open an issue and link it from the pull request.
+- **Design decisions and tradeoffs:** for choices with alternatives, such as a memory layout, a partition size, a feature left off a board or a rendering mode, open an issue even if nothing is left to do. It holds the numbers and the reason, and says what would make the decision worth revisiting.
+- **Upstream problems:** for a bug or missing feature in a third-party project, open the issue upstream and a tracking issue in the Xila repository that depends on it. Describe the use case generically upstream, without the Xila name or links to Xila code. The tracking issue links the upstream one and names the workaround in Xila.
+
+**How.**
+
+- **Body structure:** issues filed through the forms of `xila-project/.github` already have their fields. For other issues, use these sections: Problem, Findings (measurements with dates and the setup they were taken on), Options with their tradeoffs, Decision and why, Status.
+- **State in the description:** keep the state in the description, not in comments. Edit the body, tick task lists and update the Status section. Fold useful comment content into the body.
+- **Links:** link related issues and pull requests both ways. Code that holds a workaround or a deliberate limitation names its issue in a comment.
+- **Paused or rejected work:** never close or drop such an issue without a reason. Mark it paused, or close it as not planned. Write the reason in the Status section, so that the decision can be found and challenged.
+- **Before an optimisation or redesign:** search the issues of the repositories involved for earlier decisions on the same area. Then reopen or update those issues instead of starting over.
 
 # Build & Test Commands
 
