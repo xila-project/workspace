@@ -97,6 +97,19 @@ Every bug, feature, follow-up, upstream problem and design decision gets an issu
 - **Paused or rejected work:** never close or drop such an issue without a reason. Mark it paused, or close it as not planned. Write the reason in the Status section, so that the decision can be found and challenged.
 - **Before an optimisation or redesign:** search the issues of the repositories involved for earlier decisions on the same area. Then reopen or update those issues instead of starting over.
 
+## Coding agents
+
+These rules apply to coding agents that work on Xila repositories, in addition to the rules above.
+
+- **Worktree.** Fetch `origin` first. Then create your own worktree of the target repository. The path after `worktree add` is relative to `repositories/<name>`, so `../../../` puts the worktree in a `worktrees/` directory beside the workspace checkout: `git -C repositories/<name> worktree add ../../../worktrees/<short-name> -b <branch> origin/main`. Do not work in the shared submodule checkout.
+- **Scope.** Push branches only in the repositories that your task names. Open the pull requests as described in "Commits and pull requests". Do not merge unless the maintainer tells you to. Report each pull request URL and head commit.
+- **Verification.** Before you open a pull request, run the tests and lints of the repository that cover your change (see "Shared machine").
+- **Continuous integration.** If CI fails, fix the cause. Nothing resumes you after you stop, so keep checking `gh pr checks` until CI passes or the failure is clearly outside your change.
+- **Shared machine.** Several agents build at the same time. Set `CARGO_BUILD_JOBS=4` for each Cargo or mise build. Locally, run the smallest set of tests that covers your change; CI runs the rest.
+- **Disk.** Keep at least 40 GB free (`df -h /`). If less is free, stop and report. When you finish, run `cargo clean` in your worktree, then remove the worktree with `git worktree remove`. Do not run `rm -rf` on relative or unchecked paths.
+- **Hardware.** Unless the maintainer authorises your session for a specific board, do not open serial ports (`/dev/ttyUSB*`, `/dev/ttyACM*`) or run flashing tools (`espflash`, `probe-rs`, `openocd`). Build the firmware and report the output files and the flash commands.
+- **Autonomy.** Work until the task is complete. Stop and ask only for a decision that belongs to the maintainer.
+
 # Build & Test Commands
 
 - Validate workspace structure (no network, no submodules needed): `mise run workspace:validate`
