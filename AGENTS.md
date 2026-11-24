@@ -101,13 +101,13 @@ Every bug, feature, follow-up, upstream problem and design decision gets an issu
 
 These rules apply to coding agents that work on Xila repositories, in addition to the rules above.
 
-- **Worktree.** Fetch `origin` first. Then work in your own Git worktree of the target repository, in a `worktrees/` directory beside the workspace checkout: `git -C repositories/<name> worktree add ../../../worktrees/<short-name> -b <branch> origin/main`. Do not work in the shared submodule checkout.
-- **Scope.** Push only your own branch of the repository that you were asked to change. Open a pull request against `main`. Do not merge unless the maintainer tells you to. Report the pull request URL and the head commit.
-- **Verification.** Before you open the pull request, run the tests and lints of the repository that cover your change. State the commands and the results in the pull request description.
-- **Continuous integration.** If CI fails, fix the cause. Check `gh pr checks` until CI passes or the failure is clearly outside your change. Timers and scheduled checks do not resume an agent, so do not end your task while you wait for CI.
+- **Worktree.** Fetch `origin` first. Then create your own worktree of the target repository. The path after `worktree add` is relative to `repositories/<name>`, so `../../../` puts the worktree in a `worktrees/` directory beside the workspace checkout: `git -C repositories/<name> worktree add ../../../worktrees/<short-name> -b <branch> origin/main`. Do not work in the shared submodule checkout.
+- **Scope.** Push branches only in the repositories that your task names. Open the pull requests as described in "Commits and pull requests". Do not merge unless the maintainer tells you to. Report each pull request URL and head commit.
+- **Verification.** Before you open a pull request, run the tests and lints of the repository that cover your change (see "Shared machine").
+- **Continuous integration.** If CI fails, fix the cause. Nothing resumes you after you stop, so keep checking `gh pr checks` until CI passes or the failure is clearly outside your change.
 - **Shared machine.** Several agents build at the same time. Set `CARGO_BUILD_JOBS=4` for each Cargo or mise build. Locally, run the smallest set of tests that covers your change; CI runs the rest.
-- **Disk.** Keep at least 40 GB of free disk space (`df -h /`). Run `cargo clean` in your worktree when you finish. Do not run `rm -rf` on relative or unchecked paths. Use `cargo clean` and `git worktree remove` instead.
-- **Hardware.** Do not use serial ports (`/dev/ttyUSB*`, `/dev/ttyACM*`), `espflash`, `probe-rs`, `openocd` or other flashing tools. Build the firmware and report the files and the flash commands. The maintainer flashes the boards.
+- **Disk.** Keep at least 40 GB free (`df -h /`). If less is free, stop and report. When you finish, run `cargo clean` in your worktree, then remove the worktree with `git worktree remove`. Do not run `rm -rf` on relative or unchecked paths.
+- **Hardware.** Unless the maintainer authorises your session for a specific board, do not open serial ports (`/dev/ttyUSB*`, `/dev/ttyACM*`) or run flashing tools (`espflash`, `probe-rs`, `openocd`). Build the firmware and report the output files and the flash commands.
 - **Autonomy.** Work until the task is complete. Stop and ask only for a decision that belongs to the maintainer.
 
 # Build & Test Commands
