@@ -53,20 +53,20 @@ These apply in the workspace and in every submodule. A submodule's own `AGENTS.m
 
 | Repository | Instructions |
 |---|---|
-| `core` | [`repositories/core/AGENTS.md`](repositories/core/AGENTS.md) |
-| `platforms` | [`repositories/platforms/AGENTS.md`](repositories/platforms/AGENTS.md) |
-| `applications` | [`repositories/applications/AGENTS.md`](repositories/applications/AGENTS.md) |
-| `package_manager` | [`repositories/package_manager/AGENTS.md`](repositories/package_manager/AGENTS.md) |
-| `tools` | [`repositories/tools/AGENTS.md`](repositories/tools/AGENTS.md) |
-| `website` | [`repositories/website/AGENTS.md`](repositories/website/AGENTS.md) |
-| `brand` | [`repositories/brand/AGENTS.md`](repositories/brand/AGENTS.md) |
-| `media` | [`repositories/media/AGENTS.md`](repositories/media/AGENTS.md) |
+| `core` | [`core/AGENTS.md`](https://github.com/xila-project/core/blob/main/AGENTS.md) |
+| `platforms` | [`platforms/AGENTS.md`](https://github.com/xila-project/platforms/blob/main/AGENTS.md) |
+| `applications` | [`applications/AGENTS.md`](https://github.com/xila-project/applications/blob/main/AGENTS.md) |
+| `package_manager` | [`package_manager/AGENTS.md`](https://github.com/xila-project/package_manager/blob/main/AGENTS.md) |
+| `tools` | [`tools/AGENTS.md`](https://github.com/xila-project/tools/blob/main/AGENTS.md) |
+| `website` | [`website/AGENTS.md`](https://github.com/xila-project/website/blob/main/AGENTS.md) |
+| `brand` | [`brand/AGENTS.md`](https://github.com/xila-project/brand/blob/main/AGENTS.md) |
+| `media` | [`media/AGENTS.md`](https://github.com/xila-project/media/blob/main/AGENTS.md) |
 | `registry`, `package-action`, the application templates, `.github` | No file of their own: this file and their README apply |
 
-- **Language.** Plain English in code, comments, documentation, commit messages, pull requests and issues. Spell words out in identifiers and text (`device`, not `dev`; `directory`, not `dir`; `configuration`, not `config`) unless an external API or format imposes the short form.
+- **Language.** Plain English in code, comments, documentation, commit messages, pull requests and issues. Spell words out in identifiers and text (`device`, not `dev`; `directory`, not `dir`; `configuration`, not `config`) unless an external API, format or existing path imposes the short form.
 - **No tool attribution.** Commit messages, pull requests, issues, reviews, comments and documentation describe the change, never the tool or assistant that helped write it: no `Co-Authored-By` trailers for tools and no "Generated with" lines. Check `git log -1 --format=%B` after committing.
-- **Commits and pull requests.** Conventional commit titles (`feat(scope): …`, `fix: …`, `docs: …`). One pull request per repository and concern, against `main`, with green CI before merge; pull requests are squash-merged with the title as subject. State in the description what was run to verify the change.
-- **Cross-repository changes.** Land them upstream first, following the dependency direction above: Core and `package_manager`, then Applications and `tools`, then Platforms, then the workspace gitlinks. A downstream pull request stays a draft until the upstream one is merged, then relocks with `cargo update -p <crate>` and builds with `--locked`.
+- **Commits and pull requests.** Conventional commit titles (`feat(scope): …`, `fix: …`, `docs: …`). One pull request per concern in each repository, against `main`, with green CI before merge; pull requests are squash-merged with the title as subject, unless the repository's own `AGENTS.md` defines another workflow (`media` commits directly to `main`). State in the description what was run to verify the change.
+- **Cross-repository changes.** Land them upstream first, following the dependency direction above: Core and `package_manager`, then Applications and `tools`, then Platforms, then the workspace gitlinks. A downstream pull request stays a draft until the upstream one is merged, then relocks the lockfile with `cargo update -p <crate>` and builds with `--locked`.
 - **Issues.** Track open work and follow-ups in issues of the repository that owns them. Keep an issue's state in its description (edit the body, tick task lists) rather than in status comments, and link related pull requests and issues.
 - **Compatibility.** Before 1.0, breaking changes are allowed: migrate or replace old formats and options instead of adding compatibility layers, and say so in the pull request. Never delete or rewrite published releases and tags.
 - **Secrets and privacy.** Never commit secrets, local paths, device serial numbers, network names or personal data. Scripts take secret values from files passed as arguments and never print them.
