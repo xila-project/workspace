@@ -43,9 +43,10 @@ platforms       ← core, applications (dev-dependencies only, for tests)
 
 ## Package trust model
 
-- **Developer (publisher) key** signs each `.xpk` manifest and its SHA-256 file inventory.
+- **Root key** is kept offline and signs only `root.json`, which lists the online repository keys.
 - **Repository key** signs registry entries (identifier, version, archive SHA-256 and size, authorized developer key) and the developer-key list in `registry`.
-- Devices trust the repository key; installation verifies repository key → developer key → package signature → file hashes. Keep the two keys separate, and never treat a developer key as a trust anchor.
+- **Developer (publisher) key** signs each `.xpk` manifest and its SHA-256 file inventory.
+- Devices pin the root key (`root.pub`); installation verifies root key → repository key → developer key → package signature → file hashes. The repository key is a delegate of the root key, so a new `root.json` replaces it without a firmware update. Keep the keys separate, and never treat a repository key or a developer key as a trust anchor.
 
 # Rules for every Xila repository
 
