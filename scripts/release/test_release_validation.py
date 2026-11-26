@@ -50,9 +50,20 @@ class ReleaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "xila-sys"):
             check_versions(self.repositories)
 
+    def test_accepts_workspace_inherited_xila_sys_version(self):
+        self.write_sdk_manifests()
+        self.native_sdk_manifest.write_text("[package]\nversion.workspace = true\n")
+        self.assertEqual(check_versions(self.repositories), "0.1.0")
+
     def test_rejects_wasm_sdk_version_drift(self):
         self.write_sdk_manifests()
         self.wasm_sdk_manifest.write_text('[package]\nversion = "0.2.0"\n')
+        with self.assertRaisesRegex(ValueError, "xila-wasm"):
+            check_versions(self.repositories)
+
+    def test_rejects_workspace_inherited_wasm_sdk_version(self):
+        self.write_sdk_manifests()
+        self.wasm_sdk_manifest.write_text("[package]\nversion.workspace = true\n")
         with self.assertRaisesRegex(ValueError, "xila-wasm"):
             check_versions(self.repositories)
 
