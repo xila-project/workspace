@@ -57,25 +57,28 @@ python3 "$platforms/tools/dev/local_overrides.py" \
 for repository in "$platforms" "$tools"; do
   (
     cd "$repository"
-    cargo metadata --config "$patch" --format-version 1 > "$workdir/metadata.json"
+    cargo metadata --config "$patch" --format-version 1 > "$workdir/$(basename "$repository").json"
   )
-  python3 - "$workdir/metadata.json" "$(basename "$repository")" <<'PY'
+done
+
+python3 - "$workdir/platforms.json" "$workdir/tools.json" <<'PY'
 import collections
 import json
 import sys
 
-with open(sys.argv[1], encoding="utf-8") as handle:
-    metadata = json.load(handle)
 sources = collections.defaultdict(set)
-for package in metadata["packages"]:
-    if package["name"] == "xila" or package["name"].startswith("xila-"):
-        sources[package["name"]].add(package["id"])
-duplicates = {name: ids for name, ids in sources.items() if len(ids) > 1}
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as handle:
+        metadata = json.load(handle)
+    for package in metadata["packages"]:
+        name = package["name"]
+        if name == "xila" or name.startswith(("xila-", "xila_")):
+            sources[name].add(package["id"])
+duplicates = {name: sorted(ids) for name, ids in sorted(sources.items()) if len(ids) > 1}
 if duplicates:
-    raise SystemExit(sys.argv[2] + ": duplicate Xila package identities: " + repr(duplicates))
-print(sys.argv[2] + ": Cargo dependency graph resolves without duplicate Xila package identities")
+    raise SystemExit("Platforms and tools: duplicate Xila package identities: " + repr(duplicates))
+print("Platforms and tools: Cargo dependency graphs resolve without duplicate Xila package identities")
 PY
-done
 
 if [[ "$mode" == "check" ]]; then
   (
