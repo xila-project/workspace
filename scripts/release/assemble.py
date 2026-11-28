@@ -1,5 +1,6 @@
 """Collect the tested downloads and release notes for a Xila candidate."""
 
+import ast
 import gzip
 import hashlib
 import json
@@ -14,7 +15,7 @@ import tempfile
 from validate import LOCKSTEP, ROOT, VERSION, check_candidate, check_versions, git
 
 PLATFORMS = "xila-project/platforms"
-SDK_TARGETS = ("x86_64-unknown-linux-gnu", "thumbv7em-none-eabihf", "riscv32imac-unknown-none-elf")
+CORE = "xila-project/core"
 
 
 def github(*arguments):
@@ -44,10 +45,13 @@ def find_run(repository, workflow, event, revision):
 
 
 def download(repository, run, artifact, destination):
-    github(
-        "run", "download", run, "--repo", repository,
-        "--name", artifact, "--dir", str(destination),
+    result = subprocess.run(
+        ["gh", "run", "download", run, "--repo", repository, "--name", artifact, "--dir", str(destination)],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
+    if result.returncode != 0:
+        reason = result.stderr.strip() or f"exit status {result.returncode}"
+        raise ValueError(f"could not download {artifact} from {repository} run {run}: {reason}")
 
 
 def archive(source, destination, name):
@@ -61,7 +65,89 @@ def archive(source, destination, name):
             package.add(source, arcname=name, filter=normalize)
 
 
-def collect_downloads(revisions, version, output):
+TARGET_NAME = re.compile(r"[a-z0-9_]+(-[a-z0-9_]+)+")
+MUTATING_METHODS = {"clear", "pop", "popitem", "setdefault", "update", "__setitem__", "__delitem__", "__ior__"}
+
+
+def sdk_targets(core, revision):
+    path = "tools/sdk/build.py"
+    location = f"Core {revision}:{path}"
+    source = git(core, "show", f"{revision}:{path}")
+    # Read the target keys without running the SDK builder or importing its dependencies.
+    try:
+        module = ast.parse(source, filename=path)
+    except SyntaxError as error:
+        raise ValueError(f"{location} is not valid Python: {error}") from error
+
+    # A static read is correct only if the single literal assignment is the final value.
+    # These checks catch the common ways to change TARGETS later. They cannot see every
+    # indirect change (an alias, getattr, exec): the comparison with the Core CI
+    # artifacts in main() catches the targets that they miss.
+    for node in ast.walk(module):
+        if isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.value, ast.Name) \
+                and node.value.id == "TARGETS":
+            if isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)):
+                raise ValueError(f"{location} changes TARGETS after its definition")
+            if isinstance(node, ast.Attribute) and node.attr in MUTATING_METHODS:
+                raise ValueError(f"{location} changes TARGETS with {node.attr}()")
+        if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name) and node.target.id == "TARGETS":
+            raise ValueError(f"{location} changes TARGETS after its definition")
+
+    assignments = []
+    for statement in module.body:
+        if isinstance(statement, ast.Assign):
+            names = statement.targets
+        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+            names = [statement.target]
+        else:
+            continue
+        if any(isinstance(name, ast.Name) and name.id == "TARGETS" for name in names):
+            assignments.append(statement.value)
+    target_names = [node for node in ast.walk(module) if isinstance(node, ast.Name) and node.id == "TARGETS"]
+    if any(isinstance(node.ctx, ast.Del) for node in target_names):
+        raise ValueError(f"{location} deletes TARGETS")
+    stores = sum(isinstance(node.ctx, ast.Store) for node in target_names)
+    if not assignments:
+        raise ValueError(f"{location} must define TARGETS with a top-level assignment")
+    if len(assignments) != 1 or stores != 1:
+        raise ValueError(f"{location} assigns TARGETS more than once")
+
+    value = assignments[0]
+    if not isinstance(value, ast.Dict):
+        raise ValueError(f"{location} must define TARGETS as a dictionary literal")
+    if not value.keys:
+        raise ValueError(f"{location} defines an empty TARGETS")
+    if not all(isinstance(key, ast.Constant) and isinstance(key.value, str) for key in value.keys):
+        raise ValueError(f"{location} must use literal string keys in TARGETS")
+    targets = [key.value for key in value.keys]
+    if len(targets) != len(set(targets)):
+        raise ValueError(f"{location} has duplicate TARGETS keys")
+    for target in targets:
+        if not TARGET_NAME.fullmatch(target):
+            raise ValueError(f"{location} has an invalid target name {target!r}")
+    return targets
+
+
+def run_artifacts(repository, run):
+    names = github(
+        "api", f"repos/{repository}/actions/runs/{run}/artifacts", "--paginate",
+        "--jq", ".artifacts[].name",
+    )
+    return names.splitlines()
+
+
+def check_sdk_artifacts(targets, artifacts, run):
+    built = {name.removeprefix("xila-sdk-") for name in artifacts if name.startswith("xila-sdk-")}
+    missing = sorted(set(targets) - built)
+    extra = sorted(built - set(targets))
+    if missing or extra:
+        raise ValueError(
+            f"Core CI run {run} SDK artifacts do not match TARGETS: "
+            f"listed but not built {missing or 'none'}, built but not listed {extra or 'none'}"
+        )
+
+
+def collect_downloads(revisions, version, output, targets, core_run):
     major_minor = ".".join(version.split(".")[:2])
     with tempfile.TemporaryDirectory() as temporary:
         staging = Path(temporary)
@@ -89,9 +175,8 @@ def collect_downloads(revisions, version, output):
         provenance.unlink()
         archive(browser, output / "xila-browser.tar.gz", "demonstrations")
 
-        core = "xila-project/core"
-        core_run = find_run(core, "ci.yml", "push", revisions["core"])
-        for target in SDK_TARGETS:
+        core = CORE
+        for target in targets:
             sdk = staging / target
             download(core, core_run, f"xila-sdk-{target}", sdk)
             expected_name = f"xila-sdk-{major_minor}-{target}.tar.zst"
@@ -145,16 +230,27 @@ def main():
         revisions = {"workspace": git(ROOT, "rev-parse", "HEAD"), **check_candidate(ROOT)}
         verify_main_ancestry(ROOT, revisions)
         notes = release_notes(ROOT, revisions, tag, previous_tag)
+        # Read the targets first: a bad Core build script must not leave a partial output directory.
+        if output.exists():
+            raise ValueError(f"{output} already exists: move it away before a new candidate")
+        targets = sdk_targets(ROOT / "repositories/core", revisions["core"])
+        core_run = find_run(CORE, "ci.yml", "push", revisions["core"])
+        check_sdk_artifacts(targets, run_artifacts(CORE, core_run), core_run)
         output.mkdir(parents=True)
-        collect_downloads(revisions, version, output)
-        (output / "RELEASE_NOTES.md").write_text(notes)
-        (output / "revisions.json").write_text(json.dumps(revisions, indent=2) + "\n")
-        checksums = []
-        for download_file in sorted(output.iterdir()):
-            with download_file.open("rb") as handle:
-                digest = hashlib.file_digest(handle, "sha256").hexdigest()
-            checksums.append(f"{digest}  {download_file.name}\n")
-        (output / "SHA256SUMS").write_text("".join(checksums))
+        try:
+            collect_downloads(revisions, version, output, targets, core_run)
+            (output / "RELEASE_NOTES.md").write_text(notes)
+            (output / "revisions.json").write_text(json.dumps(revisions, indent=2) + "\n")
+            checksums = []
+            for download_file in sorted(output.iterdir()):
+                with download_file.open("rb") as handle:
+                    digest = hashlib.file_digest(handle, "sha256").hexdigest()
+                checksums.append(f"{digest}  {download_file.name}\n")
+            (output / "SHA256SUMS").write_text("".join(checksums))
+        except BaseException:
+            # Remove the partial candidate that this run created, so that a retry can start.
+            shutil.rmtree(output, ignore_errors=True)
+            raise
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         raise SystemExit(str(error)) from error
 
