@@ -61,29 +61,68 @@ def archive(source, destination, name):
             package.add(source, arcname=name, filter=normalize)
 
 
+TARGET_NAME = re.compile(r"[a-z0-9_]+(-[a-z0-9_]+)+")
+MUTATING_METHODS = {"clear", "pop", "popitem", "setdefault", "update", "__setitem__", "__delitem__", "__ior__"}
+
+
 def sdk_targets(core, revision):
     path = "tools/sdk/build.py"
+    location = f"Core {revision}:{path}"
     source = git(core, "show", f"{revision}:{path}")
     # Read the target keys without running the SDK builder or importing its dependencies.
-    for statement in ast.parse(source, filename=path).body:
-        if not isinstance(statement, ast.Assign) or not any(
-            isinstance(name, ast.Name) and name.id == "TARGETS" for name in statement.targets
-        ):
+    try:
+        module = ast.parse(source, filename=path)
+    except SyntaxError as error:
+        raise ValueError(f"{location} is not valid Python: {error}") from error
+
+    # A static read is correct only if the single literal assignment is the final value.
+    for node in ast.walk(module):
+        if isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.value, ast.Name) \
+                and node.value.id == "TARGETS":
+            if isinstance(node, ast.Subscript) and isinstance(node.ctx, (ast.Store, ast.Del)):
+                raise ValueError(f"{location} changes TARGETS after its definition")
+            if isinstance(node, ast.Attribute) and node.attr in MUTATING_METHODS:
+                raise ValueError(f"{location} changes TARGETS with {node.attr}()")
+        if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name) and node.target.id == "TARGETS":
+            raise ValueError(f"{location} changes TARGETS after its definition")
+
+    assignments = []
+    for statement in module.body:
+        if isinstance(statement, ast.Assign):
+            names = statement.targets
+        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+            names = [statement.target]
+        else:
             continue
-        if isinstance(statement.value, ast.Dict) and statement.value.keys and all(
-            isinstance(key, ast.Constant) and isinstance(key.value, str) and key.value
-            for key in statement.value.keys
-        ):
-            targets = [key.value for key in statement.value.keys]
-            if len(targets) == len(set(targets)):
-                return targets
-        break
-    raise ValueError(f"Core {revision}:{path} must define TARGETS with unique, literal target names")
+        if any(isinstance(name, ast.Name) and name.id == "TARGETS" for name in names):
+            assignments.append(statement.value)
+    stores = sum(
+        isinstance(node, ast.Name) and node.id == "TARGETS" and isinstance(node.ctx, ast.Store)
+        for node in ast.walk(module)
+    )
+    if not assignments:
+        raise ValueError(f"{location} does not define TARGETS")
+    if len(assignments) != 1 or stores != 1:
+        raise ValueError(f"{location} assigns TARGETS more than once")
+
+    value = assignments[0]
+    if not isinstance(value, ast.Dict):
+        raise ValueError(f"{location} must define TARGETS as a dictionary literal")
+    if not value.keys:
+        raise ValueError(f"{location} defines an empty TARGETS")
+    if not all(isinstance(key, ast.Constant) and isinstance(key.value, str) for key in value.keys):
+        raise ValueError(f"{location} must use literal string keys in TARGETS")
+    targets = [key.value for key in value.keys]
+    if len(targets) != len(set(targets)):
+        raise ValueError(f"{location} has duplicate TARGETS keys")
+    for target in targets:
+        if not TARGET_NAME.fullmatch(target):
+            raise ValueError(f"{location} has an invalid target name {target!r}")
+    return targets
 
 
-def collect_downloads(revisions, version, output):
+def collect_downloads(revisions, version, output, targets):
     major_minor = ".".join(version.split(".")[:2])
-    targets = sdk_targets(ROOT / "repositories/core", revisions["core"])
     with tempfile.TemporaryDirectory() as temporary:
         staging = Path(temporary)
         platforms_run = find_run(PLATFORMS, "ci.yml", "push", revisions["platforms"])
@@ -114,7 +153,12 @@ def collect_downloads(revisions, version, output):
         core_run = find_run(core, "ci.yml", "push", revisions["core"])
         for target in targets:
             sdk = staging / target
-            download(core, core_run, f"xila-sdk-{target}", sdk)
+            try:
+                download(core, core_run, f"xila-sdk-{target}", sdk)
+            except subprocess.CalledProcessError as error:
+                raise ValueError(
+                    f"Core CI run {core_run} has no xila-sdk-{target} artifact for a target in TARGETS"
+                ) from error
             expected_name = f"xila-sdk-{major_minor}-{target}.tar.zst"
             archives = list(sdk.glob("xila-sdk-*.tar.zst"))
             if len(archives) != 1 or archives[0].name != expected_name or (output / expected_name).exists():
@@ -166,8 +210,10 @@ def main():
         revisions = {"workspace": git(ROOT, "rev-parse", "HEAD"), **check_candidate(ROOT)}
         verify_main_ancestry(ROOT, revisions)
         notes = release_notes(ROOT, revisions, tag, previous_tag)
+        # Read the targets first: a bad Core build script must not leave a partial output directory.
+        targets = sdk_targets(ROOT / "repositories/core", revisions["core"])
         output.mkdir(parents=True)
-        collect_downloads(revisions, version, output)
+        collect_downloads(revisions, version, output, targets)
         (output / "RELEASE_NOTES.md").write_text(notes)
         (output / "revisions.json").write_text(json.dumps(revisions, indent=2) + "\n")
         checksums = []
