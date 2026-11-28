@@ -131,7 +131,7 @@ class CandidateDirectoryTests(unittest.TestCase):
             assemble.main()
 
     def test_removes_a_new_candidate_after_a_failure(self):
-        with tempfile.TemporaryDirectory(dir=Path.home() / ".cache") as root:
+        with tempfile.TemporaryDirectory() as root:
             output = Path(root) / "target/release-candidate"
             def collect(*arguments):
                 (output / "partial").write_text("x")
@@ -141,7 +141,7 @@ class CandidateDirectoryTests(unittest.TestCase):
             self.assertFalse(output.exists())
 
     def test_keeps_an_existing_candidate(self):
-        with tempfile.TemporaryDirectory(dir=Path.home() / ".cache") as root:
+        with tempfile.TemporaryDirectory() as root:
             output = Path(root) / "target/release-candidate"
             output.mkdir(parents=True)
             (output / "previous").write_text("x")

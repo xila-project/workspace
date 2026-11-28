@@ -82,7 +82,7 @@ def sdk_targets(core, revision):
     # A static read is correct only if the single literal assignment is the final value.
     # These checks catch the common ways to change TARGETS later. They cannot see every
     # indirect change (an alias, getattr, exec): the comparison with the Core CI
-    # artifacts in collect_downloads catches the targets that they miss.
+    # artifacts in main() catches the targets that they miss.
     for node in ast.walk(module):
         if isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.value, ast.Name) \
                 and node.value.id == "TARGETS":
@@ -231,11 +231,11 @@ def main():
         verify_main_ancestry(ROOT, revisions)
         notes = release_notes(ROOT, revisions, tag, previous_tag)
         # Read the targets first: a bad Core build script must not leave a partial output directory.
+        if output.exists():
+            raise ValueError(f"{output} already exists: move it away before a new candidate")
         targets = sdk_targets(ROOT / "repositories/core", revisions["core"])
         core_run = find_run(CORE, "ci.yml", "push", revisions["core"])
         check_sdk_artifacts(targets, run_artifacts(CORE, core_run), core_run)
-        if output.exists():
-            raise ValueError(f"{output} already exists: move it away before a new candidate")
         output.mkdir(parents=True)
         try:
             collect_downloads(revisions, version, output, targets, core_run)
