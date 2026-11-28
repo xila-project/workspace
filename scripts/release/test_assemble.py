@@ -1,9 +1,11 @@
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from assemble import check_sdk_artifacts, sdk_targets
+import assemble
+from assemble import check_sdk_artifacts, run_artifacts, sdk_targets
 
 CORE = Path("repositories/core")
 REVISION = "a" * 40
@@ -88,10 +90,61 @@ class SdkArtifactTests(unittest.TestCase):
 
     def test_rejects_a_target_that_the_static_read_missed(self):
         artifacts = [f"xila-sdk-{target}" for target in SIX_TARGETS]
-        with self.assertRaisesRegex(ValueError, "not in TARGETS \\['xtensa-esp32s3-elf'\\]"):
+        with self.assertRaisesRegex(ValueError, "built but not listed \\['xtensa-esp32s3-elf'\\]"):
             check_sdk_artifacts(SIX_TARGETS[:-1], artifacts, "1")
 
     def test_rejects_a_target_without_an_artifact(self):
         artifacts = [f"xila-sdk-{target}" for target in THREE_TARGETS]
-        with self.assertRaisesRegex(ValueError, "missing \\['aarch64-unknown-linux-gnu'"):
+        with self.assertRaisesRegex(ValueError, "listed but not built \\['aarch64-unknown-linux-gnu'"):
             check_sdk_artifacts(SIX_TARGETS, artifacts, "1")
+
+    @patch("assemble.github")
+    def test_joins_artifact_pages(self, github):
+        # gh prints the jq result of each page on its own lines.
+        github.return_value = "xila-sdk-a-b\nxila-native-linux-x86_64\nxila-sdk-c-d"
+        self.assertEqual(run_artifacts("xila-project/core", "1"), ["xila-sdk-a-b", "xila-native-linux-x86_64", "xila-sdk-c-d"])
+        self.assertIn("--paginate", github.call_args.args)
+
+
+class DownloadTests(unittest.TestCase):
+    @patch("assemble.subprocess.run")
+    def test_reports_the_reason_from_gh(self, run):
+        run.return_value = subprocess.CompletedProcess([], 1, "", "no artifact matches any of the names")
+        with self.assertRaisesRegex(ValueError, "xila-sdk-a-b from xila-project/core run 7: no artifact matches"):
+            assemble.download("xila-project/core", "7", "xila-sdk-a-b", Path("unused"))
+
+
+class CandidateDirectoryTests(unittest.TestCase):
+    def run_main(self, output, collect):
+        patches = {
+            "check_versions": "0.1.0", "check_candidate": {"core": REVISION}, "git": REVISION,
+            "verify_main_ancestry": None, "release_notes": "notes", "sdk_targets": ["a-b"],
+            "find_run": "1", "run_artifacts": ["xila-sdk-a-b"],
+        }
+        with patch.dict("os.environ", {"XILA_RELEASE_TAG": "v0.1.0"}), \
+                patch.object(assemble, "ROOT", output.parent.parent), \
+                patch.object(assemble, "collect_downloads", side_effect=collect):
+            for name, value in patches.items():
+                patcher = patch.object(assemble, name, return_value=value)
+                patcher.start()
+                self.addCleanup(patcher.stop)
+            assemble.main()
+
+    def test_removes_a_new_candidate_after_a_failure(self):
+        with tempfile.TemporaryDirectory(dir=Path.home() / ".cache") as root:
+            output = Path(root) / "target/release-candidate"
+            def collect(*arguments):
+                (output / "partial").write_text("x")
+                raise ValueError("download failed")
+            with self.assertRaisesRegex(SystemExit, "download failed"):
+                self.run_main(output, collect)
+            self.assertFalse(output.exists())
+
+    def test_keeps_an_existing_candidate(self):
+        with tempfile.TemporaryDirectory(dir=Path.home() / ".cache") as root:
+            output = Path(root) / "target/release-candidate"
+            output.mkdir(parents=True)
+            (output / "previous").write_text("x")
+            with self.assertRaisesRegex(SystemExit, "already exists"):
+                self.run_main(output, lambda *arguments: None)
+            self.assertTrue((output / "previous").exists())

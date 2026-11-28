@@ -15,6 +15,7 @@ import tempfile
 from validate import LOCKSTEP, ROOT, VERSION, check_candidate, check_versions, git
 
 PLATFORMS = "xila-project/platforms"
+CORE = "xila-project/core"
 
 
 def github(*arguments):
@@ -44,10 +45,13 @@ def find_run(repository, workflow, event, revision):
 
 
 def download(repository, run, artifact, destination):
-    github(
-        "run", "download", run, "--repo", repository,
-        "--name", artifact, "--dir", str(destination),
+    result = subprocess.run(
+        ["gh", "run", "download", run, "--repo", repository, "--name", artifact, "--dir", str(destination)],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
+    if result.returncode != 0:
+        reason = result.stderr.strip() or f"exit status {result.returncode}"
+        raise ValueError(f"could not download {artifact} from {repository} run {run}: {reason}")
 
 
 def archive(source, destination, name):
@@ -99,10 +103,10 @@ def sdk_targets(core, revision):
             continue
         if any(isinstance(name, ast.Name) and name.id == "TARGETS" for name in names):
             assignments.append(statement.value)
-    names = [node for node in ast.walk(module) if isinstance(node, ast.Name) and node.id == "TARGETS"]
-    if any(isinstance(node.ctx, ast.Del) for node in names):
+    target_names = [node for node in ast.walk(module) if isinstance(node, ast.Name) and node.id == "TARGETS"]
+    if any(isinstance(node.ctx, ast.Del) for node in target_names):
         raise ValueError(f"{location} deletes TARGETS")
-    stores = sum(isinstance(node.ctx, ast.Store) for node in names)
+    stores = sum(isinstance(node.ctx, ast.Store) for node in target_names)
     if not assignments:
         raise ValueError(f"{location} must define TARGETS with a top-level assignment")
     if len(assignments) != 1 or stores != 1:
@@ -139,11 +143,11 @@ def check_sdk_artifacts(targets, artifacts, run):
     if missing or extra:
         raise ValueError(
             f"Core CI run {run} SDK artifacts do not match TARGETS: "
-            f"missing {missing or 'none'}, not in TARGETS {extra or 'none'}"
+            f"listed but not built {missing or 'none'}, built but not listed {extra or 'none'}"
         )
 
 
-def collect_downloads(revisions, version, output, targets):
+def collect_downloads(revisions, version, output, targets, core_run):
     major_minor = ".".join(version.split(".")[:2])
     with tempfile.TemporaryDirectory() as temporary:
         staging = Path(temporary)
@@ -171,17 +175,10 @@ def collect_downloads(revisions, version, output, targets):
         provenance.unlink()
         archive(browser, output / "xila-browser.tar.gz", "demonstrations")
 
-        core = "xila-project/core"
-        core_run = find_run(core, "ci.yml", "push", revisions["core"])
-        check_sdk_artifacts(targets, run_artifacts(core, core_run), core_run)
+        core = CORE
         for target in targets:
             sdk = staging / target
-            try:
-                download(core, core_run, f"xila-sdk-{target}", sdk)
-            except subprocess.CalledProcessError as error:
-                raise ValueError(
-                    f"could not download xila-sdk-{target} from Core CI run {core_run}: {error}"
-                ) from error
+            download(core, core_run, f"xila-sdk-{target}", sdk)
             expected_name = f"xila-sdk-{major_minor}-{target}.tar.zst"
             archives = list(sdk.glob("xila-sdk-*.tar.zst"))
             if len(archives) != 1 or archives[0].name != expected_name or (output / expected_name).exists():
@@ -235,9 +232,13 @@ def main():
         notes = release_notes(ROOT, revisions, tag, previous_tag)
         # Read the targets first: a bad Core build script must not leave a partial output directory.
         targets = sdk_targets(ROOT / "repositories/core", revisions["core"])
+        core_run = find_run(CORE, "ci.yml", "push", revisions["core"])
+        check_sdk_artifacts(targets, run_artifacts(CORE, core_run), core_run)
+        if output.exists():
+            raise ValueError(f"{output} already exists: move it away before a new candidate")
         output.mkdir(parents=True)
         try:
-            collect_downloads(revisions, version, output, targets)
+            collect_downloads(revisions, version, output, targets, core_run)
             (output / "RELEASE_NOTES.md").write_text(notes)
             (output / "revisions.json").write_text(json.dumps(revisions, indent=2) + "\n")
             checksums = []
