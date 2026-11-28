@@ -1,5 +1,6 @@
 """Collect the tested downloads and release notes for a Xila candidate."""
 
+import ast
 import gzip
 import hashlib
 import json
@@ -14,7 +15,6 @@ import tempfile
 from validate import LOCKSTEP, ROOT, VERSION, check_candidate, check_versions, git
 
 PLATFORMS = "xila-project/platforms"
-SDK_TARGETS = ("x86_64-unknown-linux-gnu", "thumbv7em-none-eabihf", "riscv32imac-unknown-none-elf")
 
 
 def github(*arguments):
@@ -61,8 +61,29 @@ def archive(source, destination, name):
             package.add(source, arcname=name, filter=normalize)
 
 
+def sdk_targets(core, revision):
+    path = "tools/sdk/build.py"
+    source = git(core, "show", f"{revision}:{path}")
+    # Read the target keys without running the SDK builder or importing its dependencies.
+    for statement in ast.parse(source, filename=path).body:
+        if not isinstance(statement, ast.Assign) or not any(
+            isinstance(name, ast.Name) and name.id == "TARGETS" for name in statement.targets
+        ):
+            continue
+        if isinstance(statement.value, ast.Dict) and statement.value.keys and all(
+            isinstance(key, ast.Constant) and isinstance(key.value, str) and key.value
+            for key in statement.value.keys
+        ):
+            targets = [key.value for key in statement.value.keys]
+            if len(targets) == len(set(targets)):
+                return targets
+        break
+    raise ValueError(f"Core {revision}:{path} must define TARGETS with unique, literal target names")
+
+
 def collect_downloads(revisions, version, output):
     major_minor = ".".join(version.split(".")[:2])
+    targets = sdk_targets(ROOT / "repositories/core", revisions["core"])
     with tempfile.TemporaryDirectory() as temporary:
         staging = Path(temporary)
         platforms_run = find_run(PLATFORMS, "ci.yml", "push", revisions["platforms"])
@@ -91,7 +112,7 @@ def collect_downloads(revisions, version, output):
 
         core = "xila-project/core"
         core_run = find_run(core, "ci.yml", "push", revisions["core"])
-        for target in SDK_TARGETS:
+        for target in targets:
             sdk = staging / target
             download(core, core_run, f"xila-sdk-{target}", sdk)
             expected_name = f"xila-sdk-{major_minor}-{target}.tar.zst"
