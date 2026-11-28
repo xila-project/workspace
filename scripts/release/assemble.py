@@ -76,6 +76,9 @@ def sdk_targets(core, revision):
         raise ValueError(f"{location} is not valid Python: {error}") from error
 
     # A static read is correct only if the single literal assignment is the final value.
+    # These checks catch the common ways to change TARGETS later. They cannot see every
+    # indirect change (an alias, getattr, exec): the comparison with the Core CI
+    # artifacts in collect_downloads catches the targets that they miss.
     for node in ast.walk(module):
         if isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.value, ast.Name) \
                 and node.value.id == "TARGETS":
@@ -96,12 +99,12 @@ def sdk_targets(core, revision):
             continue
         if any(isinstance(name, ast.Name) and name.id == "TARGETS" for name in names):
             assignments.append(statement.value)
-    stores = sum(
-        isinstance(node, ast.Name) and node.id == "TARGETS" and isinstance(node.ctx, ast.Store)
-        for node in ast.walk(module)
-    )
+    names = [node for node in ast.walk(module) if isinstance(node, ast.Name) and node.id == "TARGETS"]
+    if any(isinstance(node.ctx, ast.Del) for node in names):
+        raise ValueError(f"{location} deletes TARGETS")
+    stores = sum(isinstance(node.ctx, ast.Store) for node in names)
     if not assignments:
-        raise ValueError(f"{location} does not define TARGETS")
+        raise ValueError(f"{location} must define TARGETS with a top-level assignment")
     if len(assignments) != 1 or stores != 1:
         raise ValueError(f"{location} assigns TARGETS more than once")
 
@@ -119,6 +122,25 @@ def sdk_targets(core, revision):
         if not TARGET_NAME.fullmatch(target):
             raise ValueError(f"{location} has an invalid target name {target!r}")
     return targets
+
+
+def run_artifacts(repository, run):
+    names = github(
+        "api", f"repos/{repository}/actions/runs/{run}/artifacts", "--paginate",
+        "--jq", ".artifacts[].name",
+    )
+    return names.splitlines()
+
+
+def check_sdk_artifacts(targets, artifacts, run):
+    built = {name.removeprefix("xila-sdk-") for name in artifacts if name.startswith("xila-sdk-")}
+    missing = sorted(set(targets) - built)
+    extra = sorted(built - set(targets))
+    if missing or extra:
+        raise ValueError(
+            f"Core CI run {run} SDK artifacts do not match TARGETS: "
+            f"missing {missing or 'none'}, not in TARGETS {extra or 'none'}"
+        )
 
 
 def collect_downloads(revisions, version, output, targets):
@@ -151,13 +173,14 @@ def collect_downloads(revisions, version, output, targets):
 
         core = "xila-project/core"
         core_run = find_run(core, "ci.yml", "push", revisions["core"])
+        check_sdk_artifacts(targets, run_artifacts(core, core_run), core_run)
         for target in targets:
             sdk = staging / target
             try:
                 download(core, core_run, f"xila-sdk-{target}", sdk)
             except subprocess.CalledProcessError as error:
                 raise ValueError(
-                    f"Core CI run {core_run} has no xila-sdk-{target} artifact for a target in TARGETS"
+                    f"could not download xila-sdk-{target} from Core CI run {core_run}: {error}"
                 ) from error
             expected_name = f"xila-sdk-{major_minor}-{target}.tar.zst"
             archives = list(sdk.glob("xila-sdk-*.tar.zst"))
@@ -213,15 +236,20 @@ def main():
         # Read the targets first: a bad Core build script must not leave a partial output directory.
         targets = sdk_targets(ROOT / "repositories/core", revisions["core"])
         output.mkdir(parents=True)
-        collect_downloads(revisions, version, output, targets)
-        (output / "RELEASE_NOTES.md").write_text(notes)
-        (output / "revisions.json").write_text(json.dumps(revisions, indent=2) + "\n")
-        checksums = []
-        for download_file in sorted(output.iterdir()):
-            with download_file.open("rb") as handle:
-                digest = hashlib.file_digest(handle, "sha256").hexdigest()
-            checksums.append(f"{digest}  {download_file.name}\n")
-        (output / "SHA256SUMS").write_text("".join(checksums))
+        try:
+            collect_downloads(revisions, version, output, targets)
+            (output / "RELEASE_NOTES.md").write_text(notes)
+            (output / "revisions.json").write_text(json.dumps(revisions, indent=2) + "\n")
+            checksums = []
+            for download_file in sorted(output.iterdir()):
+                with download_file.open("rb") as handle:
+                    digest = hashlib.file_digest(handle, "sha256").hexdigest()
+                checksums.append(f"{digest}  {download_file.name}\n")
+            (output / "SHA256SUMS").write_text("".join(checksums))
+        except BaseException:
+            # Remove the partial candidate that this run created, so that a retry can start.
+            shutil.rmtree(output, ignore_errors=True)
+            raise
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         raise SystemExit(str(error)) from error
 
